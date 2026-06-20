@@ -1,0 +1,265 @@
+import User from "../models/User.js";
+import bcrypt  from 'bcryptjs';
+import jwt from "jsonwebtoken";
+import { generateAccessToken,generateRefreshToken } from "../utils/generateToken.js";
+
+export const registerUser = async (data) => {
+  const { name, email, password, role } = data;
+
+  const existingUser = await User.findOne({ email });
+
+  if (existingUser) {
+    throw new Error("User already exists");
+  }
+
+  const allowedRoles = [
+    "resident",
+    "collector",
+  ];
+
+  if (role && !allowedRoles.includes(role)) {
+    throw new Error("Invalid role");
+  }
+
+  const hashedPassword = await bcrypt.hash(
+    password,
+    10
+  );
+
+  const user = await User.create({
+    name,
+    email,
+    password: hashedPassword,
+    role,
+  });
+
+  const accessToken =
+    generateAccessToken(user);
+
+  const refreshToken =
+    generateRefreshToken(user);
+
+  user.refreshToken = refreshToken;
+
+  await user.save();
+
+  const userResponse = user.toObject();
+
+  delete userResponse.password;
+  delete userResponse.refreshToken;
+
+  return {
+    user: userResponse,
+    accessToken,
+    refreshToken,
+  };
+};
+
+export const loginUser = async (
+  email,
+  password
+) => {
+  const user = await User.findOne({
+    email,
+  });
+
+  if (!user) {
+    throw new Error(
+      "Invalid email or password"
+    );
+  }
+
+  const isMatch = await bcrypt.compare(
+    password,
+    user.password
+  );
+
+  if (!isMatch) {
+    throw new Error(
+      "Invalid email or password"
+    );
+  }
+
+  const accessToken =
+    generateAccessToken(user);
+
+  const refreshToken =
+    generateRefreshToken(user);
+
+  user.refreshToken = refreshToken;
+
+  await user.save();
+
+  const userResponse = user.toObject();
+
+  delete userResponse.password;
+  delete userResponse.refreshToken;
+
+  return {
+    user: userResponse,
+    accessToken,
+    refreshToken,
+  };
+};
+
+
+export const getUserById=async(id)=>{
+    const user=await User.findById(id).select("-password");
+
+    if(!user){
+        throw new Error("User not found")
+    }
+    return user;
+
+};
+
+
+export const getAllUsers=async ()=>{
+    return await User.find().select("-password");
+};
+
+
+export const approveCollector=async (id)=>{
+ const user=await User.findById(id);
+
+ if(!user){
+    throw new Error("User not found")
+ }
+
+ if(user.role!=="collector"){
+    throw new Error("Only collector account can be approved");
+ }
+
+ user.isApproved=true;
+ await user.save();
+
+ return user;
+
+};
+
+export const updateAvailability=async (id,status)=>{
+    const user=await User.findById(id)
+    if(!user){
+        throw new Error("User not found");
+    }
+
+    if(user.role!=="collector"){
+        throw new Error("Only collector can update availability");
+    }
+
+    user.isAvailable=status;
+    await user.save();
+
+    return user;
+}
+
+
+export const updateLocation=async (id,longitude,latitude)=>{
+
+    const user=await User.findById(id);
+
+    if(!user){
+        throw new Error("User not found");
+    }
+
+    if(user.role!=="collector"){
+        throw new Error("Only collector can update location");
+    }
+
+    user.location={
+        type:"Point",
+        coordinates:[longitude,latitude],
+    };
+    await user.save();
+
+    return user;
+
+
+};
+
+
+
+
+export const refreshAccessToken =
+  async (incomingToken) => {
+    if (!incomingToken) {
+      throw new Error(
+        "No refresh token provided"
+      );
+    }
+
+    let decoded;
+
+    try {
+      decoded = jwt.verify(
+        incomingToken,
+        process.env.JWT_REFRESH_SECRET
+      );
+    } catch (error) {
+      throw new Error(
+        "Invalid or expired refresh token"
+      );
+    }
+
+    const user =
+      await User.findById(
+        decoded.id
+      ).select("+refreshToken");
+
+    if (
+      !user ||
+      user.refreshToken !== incomingToken
+    ) {
+      throw new Error(
+        "Please login again"
+      );
+    }
+
+    const accessToken =
+      generateAccessToken(user);
+
+    const refreshToken =
+      generateRefreshToken(user);
+
+    user.refreshToken = refreshToken;
+
+    await user.save();
+
+    return {
+      accessToken,
+      refreshToken,
+    };
+  };
+
+
+
+  export const logoutUser = async (
+  incomingToken
+) => {
+  if (!incomingToken) return;
+
+  let decoded;
+
+  try {
+    decoded = jwt.verify(
+      incomingToken,
+      process.env.JWT_REFRESH_SECRET
+    );
+  } catch {
+    return;
+  }
+
+  const user =
+    await User.findById(
+      decoded.id
+    ).select("+refreshToken");
+
+  if (
+    user &&
+    user.refreshToken === incomingToken
+  ) {
+    user.refreshToken = null;
+
+    await user.save();
+  }
+};

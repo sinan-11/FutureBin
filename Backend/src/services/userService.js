@@ -1,8 +1,13 @@
 import User from "../models/User.js";
-import bcrypt  from 'bcryptjs';
+import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { generateAccessToken,generateRefreshToken } from "../utils/generateToken.js";
 
+import {
+  generateAccessToken,
+  generateRefreshToken,
+} from "../utils/generateToken.js";
+
+// Register User
 export const registerUser = async (data) => {
   const { name, email, password, role } = data;
 
@@ -55,6 +60,7 @@ export const registerUser = async (data) => {
   };
 };
 
+// Login User
 export const loginUser = async (
   email,
   password
@@ -80,6 +86,16 @@ export const loginUser = async (
     );
   }
 
+  // Collector must be approved
+  if (
+    user.role === "collector" &&
+    !user.isApproved
+  ) {
+    throw new Error(
+      "Your account is pending admin approval"
+    );
+  }
+
   const accessToken =
     generateAccessToken(user);
 
@@ -102,84 +118,7 @@ export const loginUser = async (
   };
 };
 
-
-export const getUserById=async(id)=>{
-    const user=await User.findById(id).select("-password");
-
-    if(!user){
-        throw new Error("User not found")
-    }
-    return user;
-
-};
-
-
-export const getAllUsers=async ()=>{
-    return await User.find().select("-password");
-};
-
-
-export const approveCollector=async (id)=>{
- const user=await User.findById(id);
-
- if(!user){
-    throw new Error("User not found")
- }
-
- if(user.role!=="collector"){
-    throw new Error("Only collector account can be approved");
- }
-
- user.isApproved=true;
- await user.save();
-
- return user;
-
-};
-
-export const updateAvailability=async (id,status)=>{
-    const user=await User.findById(id)
-    if(!user){
-        throw new Error("User not found");
-    }
-
-    if(user.role!=="collector"){
-        throw new Error("Only collector can update availability");
-    }
-
-    user.isAvailable=status;
-    await user.save();
-
-    return user;
-}
-
-
-export const updateLocation=async (id,longitude,latitude)=>{
-
-    const user=await User.findById(id);
-
-    if(!user){
-        throw new Error("User not found");
-    }
-
-    if(user.role!=="collector"){
-        throw new Error("Only collector can update location");
-    }
-
-    user.location={
-        type:"Point",
-        coordinates:[longitude,latitude],
-    };
-    await user.save();
-
-    return user;
-
-
-};
-
-
-
-
+// Refresh Access Token
 export const refreshAccessToken =
   async (incomingToken) => {
     if (!incomingToken) {
@@ -221,6 +160,7 @@ export const refreshAccessToken =
     const refreshToken =
       generateRefreshToken(user);
 
+    // Refresh Token Rotation
     user.refreshToken = refreshToken;
 
     await user.save();
@@ -231,9 +171,8 @@ export const refreshAccessToken =
     };
   };
 
-
-
-  export const logoutUser = async (
+// Logout User
+export const logoutUser = async (
   incomingToken
 ) => {
   if (!incomingToken) return;
@@ -263,3 +202,111 @@ export const refreshAccessToken =
     await user.save();
   }
 };
+
+// Get User By Id
+export const getUserById = async (
+  id
+) => {
+  const user = await User.findById(
+    id
+  ).select("-password");
+
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  return user;
+};
+
+// Get All Users
+export const getAllUsers =
+  async () => {
+    return await User.find().select(
+      "-password"
+    );
+  };
+
+// Approve Collector
+export const approveCollector =
+  async (id) => {
+    const user =
+      await User.findById(id);
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    if (user.role !== "collector") {
+      throw new Error(
+        "Only collector accounts can be approved"
+      );
+    }
+
+    if (user.isApproved) {
+      throw new Error(
+        "Collector is already approved"
+      );
+    }
+
+    user.isApproved = true;
+
+    await user.save();
+
+    return user;
+  };
+
+// Update Availability
+export const updateAvailability =
+  async (id, status) => {
+    const user =
+      await User.findById(id);
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    if (user.role !== "collector") {
+      throw new Error(
+        "Only collectors can update availability"
+      );
+    }
+
+    user.isAvailable = status;
+
+    await user.save();
+
+    return user;
+  };
+
+// Update Location
+export const updateLocation =
+  async (
+    id,
+    longitude,
+    latitude
+  ) => {
+    const user =
+      await User.findById(id);
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    if (user.role !== "collector") {
+      throw new Error(
+        "Only collectors can update location"
+      );
+    }
+
+    user.location = {
+      type: "Point",
+      coordinates: [
+        longitude,
+        latitude,
+      ],
+    };
+
+    await user.save();
+
+    return user;
+  };

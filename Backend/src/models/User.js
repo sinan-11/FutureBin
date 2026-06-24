@@ -1,71 +1,98 @@
 import mongoose from "mongoose";
 
-const userSchema=new mongoose.Schema(
-    {
-        name:{
-            type:String,
-            required:[true,"Name is Required"],
-            trim:true
-        },
-        email:{
-            type:String,
-            required:[true,"Email is Required"],
-            unique:true,
-            lowercase:true,
-            trim:true,
-           
-        },
+const userSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: [true, "Name is Required"],
+      trim: true,
+    },
 
+    email: {
+      type: String,
+      required: [true, "Email is Required"],
+      unique: true,
+      lowercase: true,
+      trim: true,
+    },
 
-       
-        password:{
-            type:String,
-            required:true,
-            minlength:6
-        },
-        role:{
-            type:String,
-            enum:["resident","collector","admin"],
-            default:"resident"
-        },
+    password: {
+      type: String,
+      required: true,
+      minlength: 6,
+    },
 
+    role: {
+      type: String,
+      enum: ["resident", "collector", "admin"],
+      default: "resident",
+    },
 
-        isApproved:{
-            type:Boolean,
-            default:false
-        },
+    isApproved: {
+      type: Boolean,
+      default: function () {
+        return this.role === "resident";
+      },
+    },
 
-        isAvailable:{
-            type:Boolean,
-            default:false
-        },
-        refreshToken: {
-            type: String,
-            default: null,
-            select: false,
-        },
+    isAvailable: {
+      type: Boolean,
+      default: false,
+    },
 
-        location:{
-            type:{
-                type:String,
-                enum:["Point"],
-                default:"Point"
+    collectorDetails: {
+      phone: {
+        type: String,
+        default: "",
+      },
 
-            },
-             coordinates:{
-            type:[Number],
-            default:[0,0]
-        },
-        },
-       },
-       {
-        timestamps:true,
-       }
+      vehicleNumber: {
+        type: String,
+        default: "",
+      },
 
+      idProof: {
+        type: String,
+        default: "",
+      },
+
+      vehiclePhoto: {
+        type: String,
+        default: "",
+      },
+    },
+
+    refreshToken: {
+      type: String,
+      default: null,
+      select: false,
+    },
+
+    location: {
+      type: {
+        type: String,
+        enum: ["Point"],
+        default: "Point",
+      },
+
+      coordinates: {
+        type: [Number],
+      },
+    },
+  },
+  {
+    timestamps: true,
+  }
 );
 
-userSchema.index({location:'2dsphere'});
+userSchema.index(
+  { location: "2dsphere" },
+  { sparse: true }
+);
 
-const User=mongoose.model("User",userSchema);
+const User = mongoose.model(
+  "User",
+  userSchema
+);
 
 export default User;

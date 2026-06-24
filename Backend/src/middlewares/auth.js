@@ -3,8 +3,12 @@ import jwt from "jsonwebtoken";
 export const protect = (req, res, next) => {
   const authHeader = req.headers.authorization;
 
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+  if (
+    !authHeader ||
+    !authHeader.startsWith("Bearer ")
+  ) {
     return res.status(401).json({
+      success: false,
       message: "Not Authorised",
     });
   }
@@ -22,7 +26,8 @@ export const protect = (req, res, next) => {
     next();
   } catch (error) {
     return res.status(401).json({
-      message: "Invalid token",
+      success: false,
+      message: "Invalid or expired token",
     });
   }
 };
@@ -34,6 +39,7 @@ export const authorize = (...roles) => {
       !roles.includes(req.user.role)
     ) {
       return res.status(403).json({
+        success: false,
         message: "Forbidden",
       });
     }

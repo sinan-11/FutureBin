@@ -12,6 +12,7 @@ connectDB();
 
 const app = express();
 
+// Middleware
 app.use(express.json());
 
 // Home Route
@@ -19,9 +20,17 @@ app.get("/", (req, res) => {
   res.send("Future Bin API Running");
 });
 
-// Routes
+// API Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
+
+// 404 Handler
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: "Route not found",
+  });
+});
 
 const PORT = process.env.PORT || 5000;
 

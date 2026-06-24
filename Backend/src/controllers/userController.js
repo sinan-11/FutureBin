@@ -6,7 +6,7 @@ import {
   updateLocation,
 } from "../services/userService.js";
 
-
+// Get Current User
 export const getMe = async (req, res) => {
   try {
     const user = await getUserById(req.user.id);
@@ -23,7 +23,7 @@ export const getMe = async (req, res) => {
   }
 };
 
-
+// Get User By Id (Admin)
 export const getUser = async (req, res) => {
   try {
     const user = await getUserById(req.params.id);
@@ -40,7 +40,7 @@ export const getUser = async (req, res) => {
   }
 };
 
-
+// Get All Users (Admin)
 export const getUsers = async (req, res) => {
   try {
     const users = await getAllUsers();
@@ -57,7 +57,11 @@ export const getUsers = async (req, res) => {
   }
 };
 
-export const approveCollectorHandler = async (req,res) => {
+// Approve Collector (Admin)
+export const approveCollectorHandler = async (
+  req,
+  res
+) => {
   try {
     const user = await approveCollector(
       req.params.id
@@ -75,7 +79,11 @@ export const approveCollectorHandler = async (req,res) => {
   }
 };
 
-export const setAvailability = async (req,res) => {
+// Update Collector Availability
+export const setAvailability = async (
+  req,
+  res
+) => {
   try {
     const { status } = req.body;
 
@@ -105,11 +113,19 @@ export const setAvailability = async (req,res) => {
   }
 };
 
-export const setLocation = async (req,res) => {
+// Update Collector Location
+export const setLocation = async (
+  req,
+  res
+) => {
   try {
-    const { longitude, latitude } =req.body;
+    const { longitude, latitude } =
+      req.body;
 
-    if (longitude === undefined || latitude === undefined) {
+    if (
+      longitude === undefined ||
+      latitude === undefined
+    ) {
       return res.status(400).json({
         success: false,
         message:
@@ -117,15 +133,26 @@ export const setLocation = async (req,res) => {
       });
     }
 
-    if (typeof longitude !== "number" || typeof latitude !== "number") {
+    const lng = Number(longitude);
+    const lat = Number(latitude);
+
+    if (
+      isNaN(lng) ||
+      isNaN(lat)
+    ) {
       return res.status(400).json({
         success: false,
         message:
-          "Longitude and latitude must be numbers",
+          "Longitude and latitude must be valid numbers",
       });
     }
 
-    if (longitude < -180 ||longitude > 180 ||latitude < -90 ||latitude > 90) {
+    if (
+      lng < -180 ||
+      lng > 180 ||
+      lat < -90 ||
+      lat > 90
+    ) {
       return res.status(400).json({
         success: false,
         message:
@@ -133,11 +160,12 @@ export const setLocation = async (req,res) => {
       });
     }
 
-    const user = await updateLocation(
-      req.user.id,
-      longitude,
-      latitude
-    );
+    const user =
+      await updateLocation(
+        req.user.id,
+        lng,
+        lat
+      );
 
     res.status(200).json({
       success: true,

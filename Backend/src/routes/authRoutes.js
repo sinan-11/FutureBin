@@ -1,20 +1,47 @@
-import express from 'express';
-import rateLimit from 'express-rate-limit'
-import { register,login,refresh,logout } from '../controllers/authController.js';
+import express from "express";
+import rateLimit from "express-rate-limit";
 
+import {
+  register,
+  login,
+  refresh,
+  logout,
+} from "../controllers/authController.js";
 
-const router=express.Router();
+const router = express.Router();
 
-const authLimiter=rateLimit({
- windowMs: 15 * 60 * 1000, 
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
   max: 10,
-  message: "Too many requests, please try again later",
+
+  message: {
+    success: false,
+    message:
+      "Too many requests, please try again later",
+  },
 });
 
-router.post("/register",authLimiter, register);
-router.post("/login",authLimiter, login);
-router.post("/refresh", refresh);
-router.post("/logout", logout);
+// Public Routes
+router.post(
+  "/register",
+  authLimiter,
+  register
+);
+
+router.post(
+  "/login",
+  authLimiter,
+  login
+);
+
+router.post(
+  "/refresh",
+  refresh
+);
+
+router.post(
+  "/logout",
+  logout
+);
 
 export default router;
-

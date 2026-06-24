@@ -9,7 +9,16 @@ import {
 
 // Register User
 export const registerUser = async (data) => {
-  const { name, email, password, role } = data;
+  const {
+    name,
+    email,
+    password,
+    role,
+    phone,
+    vehicleNumber,
+    idProof,
+    vehiclePhoto,
+  } = data;
 
   const existingUser = await User.findOne({ email });
 
@@ -26,6 +35,14 @@ export const registerUser = async (data) => {
     throw new Error("Invalid role");
   }
 
+  if (role === "collector") {
+    if (!phone || !vehicleNumber) {
+      throw new Error(
+        "Phone and vehicle number are required for collectors"
+      );
+    }
+  }
+
   const hashedPassword = await bcrypt.hash(
     password,
     10
@@ -36,7 +53,31 @@ export const registerUser = async (data) => {
     email,
     password: hashedPassword,
     role,
+
+    collectorDetails:
+      role === "collector"
+        ? {
+            phone,
+            vehicleNumber,
+            idProof,
+            vehiclePhoto,
+          }
+        : undefined,
   });
+
+  const userResponse = user.toObject();
+
+  delete userResponse.password;
+  delete userResponse.refreshToken;
+
+  // Collectors must wait for approval
+  if (user.role === "collector") {
+    return {
+      user: userResponse,
+      message:
+        "Registration successful. Await admin approval.",
+    };
+  }
 
   const accessToken =
     generateAccessToken(user);
@@ -47,11 +88,6 @@ export const registerUser = async (data) => {
   user.refreshToken = refreshToken;
 
   await user.save();
-
-  const userResponse = user.toObject();
-
-  delete userResponse.password;
-  delete userResponse.refreshToken;
 
   return {
     user: userResponse,
@@ -86,7 +122,6 @@ export const loginUser = async (
     );
   }
 
-  // Collector must be approved
   if (
     user.role === "collector" &&
     !user.isApproved
@@ -160,7 +195,6 @@ export const refreshAccessToken =
     const refreshToken =
       generateRefreshToken(user);
 
-    // Refresh Token Rotation
     user.refreshToken = refreshToken;
 
     await user.save();

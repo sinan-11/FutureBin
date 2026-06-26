@@ -7,7 +7,7 @@ import {
   generateRefreshToken,
 } from "../utils/generateToken.js";
 
-// Register User
+
 export const registerUser = async (data) => {
   const {
     name,
@@ -312,7 +312,7 @@ export const updateAvailability =
     return user;
   };
 
-// Update Location
+
 export const updateLocation =
   async (
     id,

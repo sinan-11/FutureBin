@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema(
   {
+    // Basic Details
     name: {
       type: String,
       required: [true, "Name is Required"],
@@ -28,6 +29,38 @@ const userSchema = new mongoose.Schema(
       default: "resident",
     },
 
+    // Email Verification
+    emailVerified: {
+      type: Boolean,
+      default: false,
+    },
+
+    verificationOtp: {
+      type: String,
+      default: null,
+      select: false,
+    },
+
+    verificationOtpExpires: {
+      type: Date,
+      default: null,
+      select: false,
+    },
+
+    // Forgot Password
+    resetPasswordOtp: {
+      type: String,
+      default: null,
+      select: false,
+    },
+
+    resetPasswordOtpExpires: {
+      type: Date,
+      default: null,
+      select: false,
+    },
+
+    // Collector Approval
     isApproved: {
       type: Boolean,
       default: function () {
@@ -40,59 +73,68 @@ const userSchema = new mongoose.Schema(
       default: false,
     },
 
+    // Collector Information
     collectorDetails: {
       phone: {
         type: String,
-        default: "",
+        required: function () {
+          return this.role === "collector";
+        },
       },
 
       vehicleNumber: {
         type: String,
-        default: "",
+        required: function () {
+          return this.role === "collector";
+        },
       },
 
+      // Cloudinary/S3 URL
       idProof: {
         type: String,
         default: "",
       },
 
+      // Cloudinary/S3 URL
       vehiclePhoto: {
         type: String,
         default: "",
       },
     },
 
+    // Refresh Token
     refreshToken: {
       type: String,
       default: null,
       select: false,
     },
 
-    location: {
-      type: {
-        type: String,
-        enum: ["Point"],
-        default: "Point",
-      },
+    // Collector Location
+   // Collector Location
+location: {
+  type: {
+    type: String,
+    enum: ["Point"],
+    default: "Point",
+  },
 
-      coordinates: {
-        type: [Number],
-      },
-    },
+  coordinates: {
+    type: [Number],
+    default: [0, 0],
+  },
+},
   },
   {
     timestamps: true,
   }
 );
 
+// Geo Index
 userSchema.index(
   { location: "2dsphere" },
   { sparse: true }
 );
 
-const User = mongoose.model(
-  "User",
-  userSchema
-);
+const User = mongoose.model("User", userSchema);
 
 export default User;

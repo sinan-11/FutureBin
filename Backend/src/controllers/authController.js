@@ -1,6 +1,10 @@
 import {
   registerUser,
+  verifyEmailOtp,
+  resendVerificationOtp,
   loginUser,
+  forgotPassword,
+  resetPassword,
   refreshAccessToken,
   logoutUser,
 } from "../services/userService.js";
@@ -8,14 +12,103 @@ import {
 // Register
 export const register = async (req, res) => {
   try {
-    const result = await registerUser(req.body);
+    const {
+      name,
+      email,
+      password,
+      role,
+      phone,
+      vehicleNumber,
+      idProof,
+      vehiclePhoto,
+    } = req.body;
 
-    res.status(201).json({
+    if (!name || !email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Name, email and password are required",
+      });
+    }
+
+    if (role === "collector") {
+      if (!phone || !vehicleNumber) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Phone and vehicle number are required for collectors",
+        });
+      }
+    }
+
+    const result = await registerUser({
+      name,
+      email,
+      password,
+      role,
+      phone,
+      vehicleNumber,
+      idProof,
+      vehiclePhoto,
+    });
+
+    return res.status(201).json({
       success: true,
       ...result,
     });
   } catch (error) {
-    res.status(400).json({
+    return res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// Verify Email
+export const verifyEmail = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      return res.status(400).json({
+        success: false,
+        message: "Email and OTP are required",
+      });
+    }
+
+    const result = await verifyEmailOtp(email, otp);
+
+    return res.status(200).json({
+      success: true,
+      ...result,
+    });
+  } catch (error) {
+    return res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// Resend Verification OTP
+export const resendOtp = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
+      });
+    }
+
+    const result = await resendVerificationOtp(email);
+
+    return res.status(200).json({
+      success: true,
+      ...result,
+    });
+  } catch (error) {
+    return res.status(400).json({
       success: false,
       message: error.message,
     });
@@ -34,23 +127,93 @@ export const login = async (req, res) => {
       });
     }
 
-    const result = await loginUser(
-      email,
-      password
-    );
+    const result = await loginUser(email, password);
 
-    res.status(200).json({
+    res.cookie("refreshToken", result.refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    return res.status(200).json({
       success: true,
-      ...result,
+      user: result.user,
+      accessToken: result.accessToken,
     });
   } catch (error) {
     const status =
       error.message ===
-      "Your account is pending admin approval"
+        "Your account is pending admin approval" ||
+      error.message ===
+        "Please verify your email before logging in"
         ? 403
         : 401;
 
-    res.status(status).json({
+    return res.status(status).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// Forgot Password
+export const forgotPasswordHandler = async (
+  req,
+  res
+) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
+      });
+    }
+
+    const result = await forgotPassword(email);
+
+    return res.status(200).json({
+      success: true,
+      ...result,
+    });
+  } catch (error) {
+    return res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// Reset Password
+export const resetPasswordHandler = async (
+  req,
+  res
+) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+
+    if (!email || !otp || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Email, OTP and new password are required",
+      });
+    }
+
+    const result = await resetPassword(
+      email,
+      otp,
+      newPassword
+    );
+
+    return res.status(200).json({
+      success: true,
+      ...result,
+    });
+  } catch (error) {
+    return res.status(400).json({
       success: false,
       message: error.message,
     });
@@ -60,9 +223,11 @@ export const login = async (req, res) => {
 // Refresh Token
 export const refresh = async (req, res) => {
   try {
-    const { refreshToken } = req.body;
+    const incomingToken =
+      req.cookies?.refreshToken ||
+      req.body?.refreshToken;
 
-    if (!refreshToken) {
+    if (!incomingToken) {
       return res.status(400).json({
         success: false,
         message: "Refresh token is required",
@@ -70,16 +235,22 @@ export const refresh = async (req, res) => {
     }
 
     const result =
-      await refreshAccessToken(
-        refreshToken
-      );
+      await refreshAccessToken(incomingToken);
 
-    res.status(200).json({
+    res.cookie("refreshToken", result.refreshToken, {
+      httpOnly: true,
+      secure:
+        process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    return res.status(200).json({
       success: true,
-      ...result,
+      accessToken: result.accessToken,
     });
   } catch (error) {
-    res.status(401).json({
+    return res.status(401).json({
       success: false,
       message: error.message,
     });
@@ -89,23 +260,32 @@ export const refresh = async (req, res) => {
 // Logout
 export const logout = async (req, res) => {
   try {
-    const { refreshToken } = req.body;
+    const incomingToken =
+      req.cookies?.refreshToken ||
+      req.body?.refreshToken;
 
-    if (!refreshToken) {
+    if (!incomingToken) {
       return res.status(400).json({
         success: false,
         message: "Refresh token is required",
       });
     }
 
-    await logoutUser(refreshToken);
+    await logoutUser(incomingToken);
 
-    res.status(200).json({
+    res.clearCookie("refreshToken", {
+      httpOnly: true,
+      secure:
+        process.env.NODE_ENV === "production",
+      sameSite: "strict",
+    });
+
+    return res.status(200).json({
       success: true,
       message: "Logged out successfully",
     });
   } catch (error) {
-    res.status(400).json({
+    return res.status(400).json({
       success: false,
       message: error.message,
     });

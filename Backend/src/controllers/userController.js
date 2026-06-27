@@ -2,6 +2,7 @@ import {
   getUserById,
   getAllUsers,
   approveCollector,
+  rejectCollector,
   updateAvailability,
   updateLocation,
 } from "../services/userService.js";
@@ -57,14 +58,62 @@ export const getUsers = async (req, res) => {
   }
 };
 
-// Approve Collector (Admin)
-export const approveCollectorHandler = async (
-  req,
-  res
-) => {
+// Approve Collector
+export const approveCollectorHandler = async (req, res) => {
   try {
-    const user = await approveCollector(
-      req.params.id
+    const user = await approveCollector(req.params.id);
+
+    res.status(200).json({
+      success: true,
+      message: "Collector approved successfully",
+      data: user,
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// Reject Collector
+export const rejectCollectorHandler = async (req, res) => {
+  try {
+    const { reason } = req.body;
+
+    const user = await rejectCollector(
+      req.params.id,
+      reason
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Collector rejected successfully",
+      data: user,
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// Update Collector Availability
+export const setAvailability = async (req, res) => {
+  try {
+    const { status } = req.body;
+
+    if (typeof status !== "boolean") {
+      return res.status(400).json({
+        success: false,
+        message: "Status must be true or false",
+      });
+    }
+
+    const user = await updateAvailability(
+      req.user.id,
+      status
     );
 
     res.status(200).json({
@@ -79,48 +128,10 @@ export const approveCollectorHandler = async (
   }
 };
 
-// Update Collector Availability
-export const setAvailability = async (
-  req,
-  res
-) => {
-  try {
-    const { status } = req.body;
-
-    if (typeof status !== "boolean") {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Status must be true or false",
-      });
-    }
-
-    const user =
-      await updateAvailability(
-        req.user.id,
-        status
-      );
-
-    res.status(200).json({
-      success: true,
-      data: user,
-    });
-  } catch (error) {
-    res.status(400).json({
-      success: false,
-      message: error.message,
-    });
-  }
-};
-
 // Update Collector Location
-export const setLocation = async (
-  req,
-  res
-) => {
+export const setLocation = async (req, res) => {
   try {
-    const { longitude, latitude } =
-      req.body;
+    const { longitude, latitude } = req.body;
 
     if (
       longitude === undefined ||
@@ -128,22 +139,17 @@ export const setLocation = async (
     ) {
       return res.status(400).json({
         success: false,
-        message:
-          "Longitude and latitude are required",
+        message: "Longitude and latitude are required",
       });
     }
 
     const lng = Number(longitude);
     const lat = Number(latitude);
 
-    if (
-      isNaN(lng) ||
-      isNaN(lat)
-    ) {
+    if (isNaN(lng) || isNaN(lat)) {
       return res.status(400).json({
         success: false,
-        message:
-          "Longitude and latitude must be valid numbers",
+        message: "Longitude and latitude must be valid numbers",
       });
     }
 
@@ -155,17 +161,15 @@ export const setLocation = async (
     ) {
       return res.status(400).json({
         success: false,
-        message:
-          "Coordinates are out of valid range",
+        message: "Coordinates are out of valid range",
       });
     }
 
-    const user =
-      await updateLocation(
-        req.user.id,
-        lng,
-        lat
-      );
+    const user = await updateLocation(
+      req.user.id,
+      lng,
+      lat
+    );
 
     res.status(200).json({
       success: true,

@@ -5,6 +5,7 @@ import {
   getUser,
   getUsers,
   approveCollectorHandler,
+  rejectCollectorHandler,
   setAvailability,
   setLocation,
 } from "../controllers/userController.js";
@@ -16,14 +17,12 @@ import {
 
 const router = express.Router();
 
-// Current User
-router.get(
-  "/me",
-  protect,
-  getMe
-);
+// ─── Current User ─────────────────────────────────────────────────────────────
 
-// Collector Routes
+router.get("/me", protect, getMe);
+
+// ─── Collector Routes ─────────────────────────────────────────────────────────
+
 router.patch(
   "/availability",
   protect,
@@ -38,26 +37,24 @@ router.patch(
   setLocation
 );
 
-// Admin Routes
-router.get(
-  "/",
-  protect,
-  authorize("admin"),
-  getUsers
-);
+// ─── Admin Routes ─────────────────────────────────────────────────────────────
 
-router.get(
-  "/:id",
-  protect,
-  authorize("admin"),
-  getUser
-);
+router.get("/", protect, authorize("admin"), getUsers);
+
+router.get("/:id", protect, authorize("admin"), getUser);
 
 router.patch(
   "/:id/approve",
   protect,
   authorize("admin"),
   approveCollectorHandler
+);
+
+router.patch(
+  "/:id/reject",
+  protect,
+  authorize("admin"),
+  rejectCollectorHandler
 );
 
 export default router;

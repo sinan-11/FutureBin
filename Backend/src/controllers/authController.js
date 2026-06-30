@@ -19,9 +19,18 @@ export const register = async (req, res) => {
       role,
       phone,
       vehicleNumber,
-      idProof,
-      vehiclePhoto,
     } = req.body;
+
+    let vehiclePhoto = "";
+    let idProof = "";
+
+    if (req.files?.vehiclePhoto?.length) {
+      vehiclePhoto = req.files.vehiclePhoto[0].path;
+    }
+
+    if (req.files?.idProof?.length) {
+      idProof = req.files.idProof[0].path;
+    }
 
     if (!name || !email || !password) {
       return res.status(400).json({
@@ -31,11 +40,16 @@ export const register = async (req, res) => {
     }
 
     if (role === "collector") {
-      if (!phone || !vehicleNumber) {
+      if (
+        !phone ||
+        !vehicleNumber ||
+        !vehiclePhoto ||
+        !idProof
+      ) {
         return res.status(400).json({
           success: false,
           message:
-            "Phone and vehicle number are required for collectors",
+            "Phone, vehicle number, vehicle image and ID proof are required for collectors",
         });
       }
     }
@@ -47,8 +61,8 @@ export const register = async (req, res) => {
       role,
       phone,
       vehicleNumber,
-      idProof,
       vehiclePhoto,
+      idProof,
     });
 
     return res.status(201).json({

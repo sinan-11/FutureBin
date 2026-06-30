@@ -4,6 +4,7 @@ import {
   getMe,
   getUser,
   getUsers,
+  dashboardStats,
   approveCollectorHandler,
   rejectCollectorHandler,
   setAvailability,
@@ -39,10 +40,31 @@ router.patch(
 
 // ─── Admin Routes ─────────────────────────────────────────────────────────────
 
-router.get("/", protect, authorize("admin"), getUsers);
+// Dashboard Statistics
+router.get(
+  "/dashboard",
+  protect,
+  authorize("admin"),
+  dashboardStats
+);
 
-router.get("/:id", protect, authorize("admin"), getUser);
+// Get All Users
+router.get(
+  "/",
+  protect,
+  authorize("admin"),
+  getUsers
+);
 
+// Get User By ID
+router.get(
+  "/:id",
+  protect,
+  authorize("admin"),
+  getUser
+);
+
+// Approve Collector
 router.patch(
   "/:id/approve",
   protect,
@@ -50,6 +72,7 @@ router.patch(
   approveCollectorHandler
 );
 
+// Reject Collector
 router.patch(
   "/:id/reject",
   protect,

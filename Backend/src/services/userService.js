@@ -469,3 +469,38 @@ export const updateLocation = async (id, longitude, latitude) => {
 
   return user;
 };
+// ─── Dashboard Stats ─────────────────────────────────────────────────────────
+
+export const getDashboardStats = async () => {
+  const residents = await User.countDocuments({
+    role: "resident",
+  });
+
+  const approvedCollectors = await User.countDocuments({
+    role: "collector",
+    isApproved: true,
+  });
+
+  const pendingCollectors = await User.countDocuments({
+    role: "collector",
+    isApproved: false,
+  });
+
+  const pendingCollectorList = await User.find({
+    role: "collector",
+    isApproved: false,
+  }).select("-password");
+
+  const approvedCollectorList = await User.find({
+    role: "collector",
+    isApproved: true,
+  }).select("-password");
+
+  return {
+    residents,
+    approvedCollectors,
+    pendingCollectors,
+    pendingCollectorList,
+    approvedCollectorList,
+  };
+};

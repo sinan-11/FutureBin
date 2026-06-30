@@ -5,13 +5,13 @@ const userSchema = new mongoose.Schema(
     // Basic Details
     name: {
       type: String,
-      required: [true, "Name is Required"],
+      required: [true, "Name is required"],
       trim: true,
     },
 
     email: {
       type: String,
-      required: [true, "Email is Required"],
+      required: [true, "Email is required"],
       unique: true,
       lowercase: true,
       trim: true,
@@ -73,7 +73,7 @@ const userSchema = new mongoose.Schema(
       default: false,
     },
 
-    // Collector Information
+    // Collector Details
     collectorDetails: {
       phone: {
         type: String,
@@ -89,14 +89,12 @@ const userSchema = new mongoose.Schema(
         },
       },
 
-      // Cloudinary/S3 URL
-      idProof: {
+      vehiclePhoto: {
         type: String,
         default: "",
       },
 
-      // Cloudinary/S3 URL
-      vehiclePhoto: {
+      idProof: {
         type: String,
         default: "",
       },
@@ -110,19 +108,18 @@ const userSchema = new mongoose.Schema(
     },
 
     // Collector Location
-   // Collector Location
-location: {
-  type: {
-    type: String,
-    enum: ["Point"],
-    default: "Point",
-  },
+    location: {
+      type: {
+        type: String,
+        enum: ["Point"],
+        default: "Point",
+      },
 
-  coordinates: {
-    type: [Number],
-    default: [0, 0],
-  },
-},
+      coordinates: {
+        type: [Number],
+        default: [0, 0],
+      },
+    },
   },
   {
     timestamps: true,
@@ -131,8 +128,12 @@ location: {
 
 // Geo Index
 userSchema.index(
-  { location: "2dsphere" },
-  { sparse: true }
+  {
+    location: "2dsphere",
+  },
+  {
+    sparse: true,
+  }
 );
 
 const User = mongoose.model("User", userSchema);

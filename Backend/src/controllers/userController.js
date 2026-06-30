@@ -1,13 +1,15 @@
 import {
   getUserById,
   getAllUsers,
+  getDashboardStats,
   approveCollector,
   rejectCollector,
   updateAvailability,
   updateLocation,
 } from "../services/userService.js";
 
-// Get Current User
+// ─── Get Current User ─────────────────────────────────────────────────────────
+
 export const getMe = async (req, res) => {
   try {
     const user = await getUserById(req.user.id);
@@ -24,7 +26,8 @@ export const getMe = async (req, res) => {
   }
 };
 
-// Get User By Id (Admin)
+// ─── Get User By Id (Admin) ───────────────────────────────────────────────────
+
 export const getUser = async (req, res) => {
   try {
     const user = await getUserById(req.params.id);
@@ -41,7 +44,8 @@ export const getUser = async (req, res) => {
   }
 };
 
-// Get All Users (Admin)
+// ─── Get All Users (Admin) ────────────────────────────────────────────────────
+
 export const getUsers = async (req, res) => {
   try {
     const users = await getAllUsers();
@@ -58,7 +62,26 @@ export const getUsers = async (req, res) => {
   }
 };
 
-// Approve Collector
+// ─── Dashboard Stats (Admin) ──────────────────────────────────────────────────
+
+export const dashboardStats = async (req, res) => {
+  try {
+    const stats = await getDashboardStats();
+
+    res.status(200).json({
+      success: true,
+      data: stats,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// ─── Approve Collector ────────────────────────────────────────────────────────
+
 export const approveCollectorHandler = async (req, res) => {
   try {
     const user = await approveCollector(req.params.id);
@@ -76,7 +99,8 @@ export const approveCollectorHandler = async (req, res) => {
   }
 };
 
-// Reject Collector
+// ─── Reject Collector ─────────────────────────────────────────────────────────
+
 export const rejectCollectorHandler = async (req, res) => {
   try {
     const { reason } = req.body;
@@ -99,7 +123,8 @@ export const rejectCollectorHandler = async (req, res) => {
   }
 };
 
-// Update Collector Availability
+// ─── Update Collector Availability ────────────────────────────────────────────
+
 export const setAvailability = async (req, res) => {
   try {
     const { status } = req.body;
@@ -128,7 +153,8 @@ export const setAvailability = async (req, res) => {
   }
 };
 
-// Update Collector Location
+// ─── Update Collector Location ────────────────────────────────────────────────
+
 export const setLocation = async (req, res) => {
   try {
     const { longitude, latitude } = req.body;
@@ -149,7 +175,8 @@ export const setLocation = async (req, res) => {
     if (isNaN(lng) || isNaN(lat)) {
       return res.status(400).json({
         success: false,
-        message: "Longitude and latitude must be valid numbers",
+        message:
+          "Longitude and latitude must be valid numbers",
       });
     }
 

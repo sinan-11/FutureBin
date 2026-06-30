@@ -7,7 +7,7 @@ import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
 import VerifyEmail from "./pages/auth/VerifyEmail";
 import ForgotPassword from "./pages/auth/ForgotPassword";
-import ResetPassword from "./pages/auth/ResetPassword";
+
 
 // Dashboards
 import ResidentDashboard from "./pages/resident/Dashboard";
@@ -16,6 +16,7 @@ import AdminDashboard from "./pages/admin/Dashboard";
 import PendingCollectors from "./pages/admin/PendingCollectors";
 
 // Route Guards
+import PublicRoute from "./components/PublicRoute";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ResidentRoute from "./components/ResidentRoute";
 import CollectorRoute from "./components/CollectorRoute";
@@ -24,17 +25,33 @@ import AdminRoute from "./components/AdminRoute";
 function App() {
   return (
     <Routes>
-      {/* Public Routes */}
+      {/* Home */}
       <Route path={ROUTES.HOME} element={<Home />} />
-      <Route path={ROUTES.LOGIN} element={<Login />} />
-      <Route path={ROUTES.REGISTER} element={<Register />} />
-      <Route path={ROUTES.VERIFY_EMAIL} element={<VerifyEmail />} />
-      <Route path={ROUTES.FORGOT_PASSWORD} element={<ForgotPassword />} />
-      <Route path={ROUTES.RESET_PASSWORD} element={<ResetPassword />} />
+
+      {/* Public Routes */}
+      <Route element={<PublicRoute />}>
+        <Route path={ROUTES.LOGIN} element={<Login />} />
+
+        <Route
+          path={ROUTES.REGISTER}
+          element={<Register />}
+        />
+
+        <Route
+          path={ROUTES.VERIFY_EMAIL}
+          element={<VerifyEmail />}
+        />
+
+        <Route
+          path={ROUTES.FORGOT_PASSWORD}
+          element={<ForgotPassword />}
+        />
+
+      
+      </Route>
 
       {/* Protected Routes */}
       <Route element={<ProtectedRoute />}>
-
         {/* Resident */}
         <Route element={<ResidentRoute />}>
           <Route
@@ -57,16 +74,19 @@ function App() {
             path={ROUTES.ADMIN_DASHBOARD}
             element={<AdminDashboard />}
           />
+
           <Route
             path={ROUTES.ADMIN_PENDING_COLLECTORS}
             element={<PendingCollectors />}
           />
         </Route>
-
       </Route>
 
-      {/* 404 Fallback */}
-      <Route path="*" element={<Navigate to={ROUTES.HOME} replace />} />
+      {/* 404 */}
+      <Route
+        path="*"
+        element={<Navigate to={ROUTES.HOME} replace />}
+      />
     </Routes>
   );
 }

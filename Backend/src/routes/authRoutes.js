@@ -1,5 +1,6 @@
 import express from "express";
 import rateLimit from "express-rate-limit";
+
 import {
   register,
   verifyEmail,
@@ -11,9 +12,11 @@ import {
   logout,
 } from "../controllers/authController.js";
 
+import upload from "../middlewares/upload.js";
+
 const router = express.Router();
 
-// ─── Rate Limiters ────────────────────────────────────────────────────────────
+// ───────────────── Rate Limiters ─────────────────
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -48,19 +51,47 @@ const refreshLimiter = rateLimit({
   },
 });
 
-// ─── Authentication ───────────────────────────────────────────────────────────
+// ───────────────── Authentication ─────────────────
 
-router.post("/register", authLimiter, register);
+// Register
+router.post(
+  "/register",
+  authLimiter,
+  upload.fields([
+    {
+      name: "vehiclePhoto",
+      maxCount: 1,
+    },
+    {
+      name: "idProof",
+      maxCount: 1,
+    },
+  ]),
+  register
+);
+
+// Email Verification
 router.post("/verify-email", authLimiter, verifyEmail);
 router.post("/resend-otp", resendOtpLimiter, resendOtp);
+
+// Login
 router.post("/login", authLimiter, login);
 
-// ─── Password Reset ───────────────────────────────────────────────────────────
+// ───────────────── Password Reset ─────────────────
 
-router.post("/forgot-password", authLimiter, forgotPasswordHandler);
-router.post("/reset-password", authLimiter, resetPasswordHandler);
+router.post(
+  "/forgot-password",
+  authLimiter,
+  forgotPasswordHandler
+);
 
-// ─── Token ────────────────────────────────────────────────────────────────────
+router.post(
+  "/reset-password",
+  authLimiter,
+  resetPasswordHandler
+);
+
+// ───────────────── Token ─────────────────
 
 router.post("/refresh", refreshLimiter, refresh);
 router.post("/logout", logout);

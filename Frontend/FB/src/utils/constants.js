@@ -11,6 +11,7 @@ export const ROLES = {
 };
 
 // App Routes
+// App Routes
 export const ROUTES = {
   // Public
   HOME: "/",
@@ -28,6 +29,9 @@ export const ROUTES = {
 
   // Admin
   ADMIN_DASHBOARD: "/admin/dashboard",
+  ADMIN_RESIDENTS: "/admin/residents",
+  ADMIN_APPROVED_COLLECTORS:
+    "/admin/approved-collectors",
   ADMIN_PENDING_COLLECTORS:
     "/admin/pending-collectors",
 };

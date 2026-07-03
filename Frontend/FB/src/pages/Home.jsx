@@ -1,72 +1,35 @@
-import { Link } from "react-router-dom";
+import { FaLeaf } from "react-icons/fa";
 
 import Layout from "../components/Layout";
-import { ROUTES } from "../utils/constants";
 
 const Home = () => {
   return (
     <Layout>
-      <section className="flex min-h-[85vh] items-center justify-center bg-gradient-to-br from-green-50 to-white">
-        <div className="max-w-3xl px-6 text-center">
-          <h1 className="mb-6 text-6xl font-bold text-green-700">
-            Future Bin
+      <section className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-brand-700 via-brand-600 to-brand-800 pt-20">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.1)_0%,transparent_60%)]" />
+        <div className="pointer-events-none absolute -top-40 -right-40 h-96 w-96 rounded-full bg-brand-400/20 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-40 -left-40 h-96 w-96 rounded-full bg-brand-300/10 blur-3xl" />
+
+        <div className="relative z-10 mx-auto max-w-4xl px-6 text-center">
+          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-1.5 text-sm text-white/80 backdrop-blur-sm">
+            <FaLeaf className="h-4 w-4 text-brand-200" />
+            Smart Waste Management Platform
+          </div>
+
+          <h1 className="mb-6 text-5xl font-extrabold leading-tight tracking-tight text-white md:text-7xl">
+            Waste Collection,{" "}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-200 to-white">
+              Reimagined
+            </span>
           </h1>
 
-          <p className="mb-8 text-xl text-gray-600">
-            Smart Waste Collection &
-            Management System
+          <p className="mx-auto max-w-2xl text-lg text-white/70 md:text-xl">
+            A smarter way to manage waste collection. Real-time tracking, automated scheduling, and a cleaner tomorrow for everyone.
           </p>
+        </div>
 
-          <div className="mb-16 flex justify-center gap-5">
-            <Link
-              to={ROUTES.LOGIN}
-              className="rounded-xl bg-green-600 px-8 py-3 text-lg font-semibold text-white transition hover:bg-green-700"
-            >
-              Login
-            </Link>
-
-            <Link
-              to={ROUTES.REGISTER}
-              className="rounded-xl border-2 border-green-600 px-8 py-3 text-lg font-semibold text-green-600 transition hover:bg-green-600 hover:text-white"
-            >
-              Register
-            </Link>
-          </div>
-
-          <div className="grid gap-6 md:grid-cols-3">
-            <div className="rounded-xl bg-white p-6 shadow">
-              <h2 className="mb-2 text-xl font-semibold text-green-600">
-                Resident
-              </h2>
-
-              <p className="text-gray-600">
-                Request waste collection and
-                share your location.
-              </p>
-            </div>
-
-            <div className="rounded-xl bg-white p-6 shadow">
-              <h2 className="mb-2 text-xl font-semibold text-green-600">
-                Collector
-              </h2>
-
-              <p className="text-gray-600">
-                Manage availability and collect
-                waste efficiently.
-              </p>
-            </div>
-
-            <div className="rounded-xl bg-white p-6 shadow">
-              <h2 className="mb-2 text-xl font-semibold text-green-600">
-                Admin
-              </h2>
-
-              <p className="text-gray-600">
-                Approve collectors and monitor
-                the entire system.
-              </p>
-            </div>
-          </div>
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce">
+          <div className="h-8 w-5 rounded-full border-2 border-white/30" />
         </div>
       </section>
     </Layout>

@@ -8,8 +8,8 @@ import connectDB from "./src/config/db.js";
 
 import authRoutes from "./src/routes/authRoutes.js";
 import userRoutes from "./src/routes/userRoutes.js";
-
-
+import pickupRoutes from "./src/routes/pickupRoutes.js";
+import walletRoutes from "./src/routes/walletRoutes.js";
 
 connectDB();
 
@@ -34,6 +34,8 @@ app.get("/", (req, res) => {
 // API Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/pickup-requests", pickupRoutes);
+app.use("/api/wallet", walletRoutes);
 
 // 404 Handler
 app.use((req, res) => {

@@ -23,9 +23,15 @@ export const ROUTES = {
 
   // Resident
   RESIDENT_DASHBOARD: "/resident/dashboard",
+  RESIDENT_CREATE_REQUEST: "/resident/create-request",
+  RESIDENT_MY_REQUESTS: "/resident/my-requests",
+  RESIDENT_WALLET: "/resident/wallet",
 
   // Collector
   COLLECTOR_DASHBOARD: "/collector/dashboard",
+  COLLECTOR_AVAILABLE: "/collector/available",
+  COLLECTOR_MY_PICKUPS: "/collector/my-pickups",
+  COLLECTOR_WALLET: "/collector/wallet",
 
   // Admin
   ADMIN_DASHBOARD: "/admin/dashboard",
@@ -56,6 +62,26 @@ export const API_ENDPOINTS = {
 
   // Admin
   GET_USERS: "/users",
+
+  // Pickup Requests
+  CREATE_PICKUP: "/pickup-requests",
+  GET_MY_PICKUPS: "/pickup-requests/my",
+  GET_ASSIGNED_PICKUPS: "/pickup-requests/assigned",
+  GET_AVAILABLE_PICKUPS: "/pickup-requests/available",
+  ACCEPT_PICKUP: (id) => `/pickup-requests/${id}/accept`,
+  REJECT_PICKUP: (id) => `/pickup-requests/${id}/reject`,
+  UPDATE_PICKUP_STATUS: (id) => `/pickup-requests/${id}/status`,
+  CANCEL_PICKUP: (id) => `/pickup-requests/${id}/cancel`,
+  ARRIVE_PICKUP: (id) => `/pickup-requests/${id}/arrive`,
+  VERIFY_WEIGHT: (id) => `/pickup-requests/${id}/verify-weight`,
+  GENERATE_OTP: (id) => `/pickup-requests/${id}/generate-otp`,
+  GET_PICKUP_OTP: (id) => `/pickup-requests/${id}/otp`,
+  VERIFY_OTP: (id) => `/pickup-requests/${id}/verify-otp`,
+
+  // Wallet
+  WALLET_CREATE: "/wallet/create",
+  WALLET_ME: "/wallet/me",
+  WALLET_TRANSACTIONS: "/wallet/transactions",
 };
 
 // Toast Messages
@@ -89,4 +115,18 @@ export const MESSAGES = {
 
   SOMETHING_WENT_WRONG:
     "Something went wrong.",
+
+  PICKUP_CREATED:
+    "Pickup request created successfully!",
+  PICKUP_ACCEPTED:
+    "Pickup request accepted!",
+  PICKUP_CANCELLED:
+    "Pickup request cancelled.",
+  PICKUP_STATUS_UPDATED:
+    "Pickup status updated.",
+
+  WALLET_CREATED:
+    "Wallet created successfully",
+  WALLET_FETCH_ERROR:
+    "Failed to load wallet",
 };

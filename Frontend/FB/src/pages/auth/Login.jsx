@@ -40,7 +40,7 @@ const Login = () => {
   };
 
   return (
-    <AuthLayout title="Welcome Back" subtitle="Login to Future Bin">
+    <AuthLayout title="Welcome Back" subtitle="Login to Future Bin" backTo={ROUTES.HOME}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <Input label="Email" type="email" name="email" value={formData.email} onChange={handleChange} placeholder="Enter your email" required />
         <Input label="Password" type="password" name="password" value={formData.password} onChange={handleChange} placeholder="Enter your password" required />

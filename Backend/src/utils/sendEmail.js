@@ -5,6 +5,7 @@ import { collectorRegistrationTemplate } from "../templates/emails/collectorRegi
 import { collectorApprovedTemplate } from "../templates/emails/collectorApproved.js";
 import { collectorRejectedTemplate } from "../templates/emails/collectorRejected.js";
 import { passwordResetOtpTemplate } from "../templates/emails/passwordResetOtp.js";
+import { pickupOtpTemplate } from "../templates/emails/pickupOtp.js";
 
 // ─── Generic Send ─────────────────────────────────────────────────────────────
 
@@ -46,5 +47,10 @@ export const sendCollectorRejectedEmail = async (email, name, reason) => {
 
 export const sendPasswordResetOtp = async (email, otp) => {
   const { subject, html } = passwordResetOtpTemplate(otp);
+  await sendMail({ to: email, subject, html });
+};
+
+export const sendPickupOtp = async (email, otp, address) => {
+  const { subject, html } = pickupOtpTemplate(otp, address);
   await sendMail({ to: email, subject, html });
 };

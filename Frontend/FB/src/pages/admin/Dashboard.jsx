@@ -57,6 +57,8 @@ const AdminDashboard = () => {
 
   const handleLogout = async () => { await logoutService(); toast.success("Logged out"); navigate(ROUTES.LOGIN); };
 
+  const openZoom = (src, label) => { setZoomImage(src); setZoomLabel(label); };
+
   useEffect(() => {
     const handleKeyDown = (e) => { if (e.key === "Escape") { setZoomImage(null); setZoomLabel(""); } };
     window.addEventListener("keydown", handleKeyDown);

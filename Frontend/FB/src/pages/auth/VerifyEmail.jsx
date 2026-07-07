@@ -45,7 +45,7 @@ const VerifyEmail = () => {
   };
 
   return (
-    <AuthLayout title="Verify Email" subtitle="Enter the OTP sent to your email">
+    <AuthLayout title="Verify Email" subtitle="Enter the OTP sent to your email" backTo={ROUTES.LOGIN}>
       <form onSubmit={handleVerify} className="space-y-4">
         <Input label="Email" type="email" name="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
         <Input label="OTP" type="text" name="otp" value={otp} onChange={(e) => setOtp(e.target.value)} placeholder="Enter 6-digit OTP" required />

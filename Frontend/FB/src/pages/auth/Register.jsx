@@ -55,7 +55,7 @@ const Register = () => {
   };
 
   return (
-    <AuthLayout title="Create Account" subtitle="Join Future Bin">
+    <AuthLayout title="Create Account" subtitle="Join Future Bin" backTo={ROUTES.LOGIN}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <Input label="Full Name" name="name" value={formData.name} onChange={handleChange} placeholder="Enter your name" required />
         <Input label="Email" type="email" name="email" value={formData.email} onChange={handleChange} placeholder="Enter your email" required />

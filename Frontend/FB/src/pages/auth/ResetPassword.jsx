@@ -39,7 +39,7 @@ const ResetPassword = () => {
   };
 
   return (
-    <AuthLayout title="Reset Password" subtitle="Enter your new password">
+    <AuthLayout title="Reset Password" subtitle="Enter your new password" backTo={ROUTES.LOGIN}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <Input label="Email" type="email" name="email" value={formData.email} onChange={handleChange} placeholder="Enter your email" required />
         <Input label="OTP" type="text" name="otp" value={formData.otp} onChange={handleChange} placeholder="Enter 6-digit OTP" required />

@@ -47,7 +47,7 @@ const ForgotPassword = () => {
   };
 
   return (
-    <AuthLayout title="Reset Password" subtitle={step === 1 ? "Enter your email to receive an OTP" : "Enter the OTP and your new password"}>
+    <AuthLayout title="Reset Password" subtitle={step === 1 ? "Enter your email to receive an OTP" : "Enter the OTP and your new password"} backTo={ROUTES.LOGIN}>
       {step === 1 ? (
         <form onSubmit={handleSendOtp} className="space-y-4">
           <Input label="Email" type="email" name="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Enter your email" required />

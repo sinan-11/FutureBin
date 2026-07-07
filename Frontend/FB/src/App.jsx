@@ -22,6 +22,12 @@ import ResidentDashboard from "./pages/resident/Dashboard";
 import CollectorDashboard from "./pages/collector/Dashboard";
 import AdminDashboard from "./pages/admin/Dashboard";
 
+// Pickup Pages
+import CreateRequest from "./pages/resident/CreateRequest";
+import MyRequests from "./pages/resident/MyRequests";
+import CollectorMyPickups from "./pages/collector/MyPickups";
+import CollectorAvailable from "./pages/collector/AvailableRequests";
+
 // Admin Pages
 import Residents from "./pages/admin/Residents";
 import ApprovedCollectors from "./pages/admin/ApprovedCollectors";
@@ -86,10 +92,14 @@ function App() {
       <Route element={<ProtectedRoute />}>
         <Route element={<ResidentRoute />}>
           <Route path={ROUTES.RESIDENT_DASHBOARD} element={<ResidentDashboard />} />
+          <Route path={ROUTES.RESIDENT_CREATE_REQUEST} element={<CreateRequest />} />
+          <Route path={ROUTES.RESIDENT_MY_REQUESTS} element={<MyRequests />} />
         </Route>
 
         <Route element={<CollectorRoute />}>
           <Route path={ROUTES.COLLECTOR_DASHBOARD} element={<CollectorDashboard />} />
+          <Route path={ROUTES.COLLECTOR_AVAILABLE} element={<CollectorAvailable />} />
+          <Route path={ROUTES.COLLECTOR_MY_PICKUPS} element={<CollectorMyPickups />} />
         </Route>
 
         <Route element={<AdminRoute />}>

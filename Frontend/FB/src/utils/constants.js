@@ -76,6 +76,7 @@ export const API_ENDPOINTS = {
   VERIFY_WEIGHT: (id) => `/pickup-requests/${id}/verify-weight`,
   GENERATE_OTP: (id) => `/pickup-requests/${id}/generate-otp`,
   GET_PICKUP_OTP: (id) => `/pickup-requests/${id}/otp`,
+  REGENERATE_OTP: (id) => `/pickup-requests/${id}/regenerate-otp`,
   VERIFY_OTP: (id) => `/pickup-requests/${id}/verify-otp`,
 
   // Wallet

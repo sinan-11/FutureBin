@@ -6,6 +6,7 @@ import {
   verifyActualWeight,
   generateCompletionOtp,
   getPickupOtp,
+  regenerateCompletionOtp,
   verifyCompletionOtp,
   getResidentRequests,
   getCollectorRequests,
@@ -327,6 +328,25 @@ export const getOtpHandler = async (req, res) => {
     });
   } catch (error) {
     res.status(404).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// ─── Resident: Regenerate OTP ──────────────────────────────────────────────────
+
+export const regenerateOtpHandler = async (req, res) => {
+  try {
+    const result = await regenerateCompletionOtp(req.params.id, req.user.id);
+
+    res.status(200).json({
+      success: true,
+      message: "New OTP sent to your email",
+      data: result,
+    });
+  } catch (error) {
+    res.status(400).json({
       success: false,
       message: error.message,
     });

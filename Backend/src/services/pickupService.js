@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import PickupRequest from "../models/PickupRequest.js";
 import User from "../models/User.js";
-import { sendPickupOtp } from "../utils/sendEmail.js";
+import { sendPickupOtp, sendPickupCompletedToResident, sendPickupCompletedToCollector } from "../utils/sendEmail.js";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -506,21 +506,11 @@ export const verifyActualWeight = async (requestId, collectorId, actualWeight) =
     throw new Error("Actual weight must be greater than 0");
   }
 
-  const request = await PickupRequest.findOneAndUpdate(
-    {
-      _id: requestId,
-      collector: collectorId,
-      status: "collector_arrived",
-    },
-    {
-      $set: {
-        actualWeight: Number(actualWeight),
-        finalAmount: calculatePrice(Number(actualWeight)),
-        status: "weight_verified",
-      },
-    },
-    { new: true }
-  );
+  const request = await PickupRequest.findOne({
+    _id: requestId,
+    collector: collectorId,
+    status: "collector_arrived",
+  });
 
   if (!request) {
     const existing = await PickupRequest.findById(requestId);
@@ -528,13 +518,16 @@ export const verifyActualWeight = async (requestId, collectorId, actualWeight) =
     throw new Error("Cannot verify weight in the current status");
   }
 
-  // Auto-generate OTP and send to resident
   const otp = String(crypto.randomInt(100000, 999999));
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
+  request.actualWeight = Number(actualWeight);
+  request.finalAmount = calculatePrice(Number(actualWeight));
+  request.status = "weight_verified";
   request.completionOtp = otp;
   request.completionOtpExpiresAt = expiresAt;
   request.otpAttempts = 0;
+
   await request.save();
 
   const resident = await User.findById(request.resident);
@@ -598,6 +591,46 @@ export const generateCompletionOtp = async (requestId, collectorId) => {
   return result;
 };
 
+// ─── Resident: Regenerate OTP ─────────────────────────────────────────────────
+
+/**
+ * Generate a new OTP for a pickup request (resident self-service).
+ * Replaces any existing OTP and sends the new one via email.
+ *
+ * @param {string} requestId
+ * @param {string} residentId
+ * @returns {Promise<Object>} { otp } in dev, { message } in production
+ * @throws {Error} 404 if not found or 400 if invalid status
+ */
+export const regenerateCompletionOtp = async (requestId, residentId) => {
+  const request = await PickupRequest.findOne({
+    _id: requestId,
+    resident: residentId,
+    status: "weight_verified",
+  });
+
+  if (!request) {
+    const existing = await PickupRequest.findById(requestId);
+    if (!existing) throw new Error("Pickup request not found");
+    throw new Error("Cannot generate OTP in the current status");
+  }
+
+  const otp = String(crypto.randomInt(100000, 999999));
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+  request.completionOtp = otp;
+  request.completionOtpExpiresAt = expiresAt;
+  request.otpAttempts = 0;
+  await request.save();
+
+  const resident = await User.findById(request.resident);
+  if (resident) {
+    await notifyPickupOtp(resident, otp, request.pickupAddress);
+  }
+
+  return { otp };
+};
+
 // ─── Resident: Get OTP ────────────────────────────────────────────────────────
 
 /**
@@ -622,11 +655,7 @@ export const getPickupOtp = async (requestId, residentId) => {
     throw new Error("OTP not found or request is not awaiting verification");
   }
 
-  if (process.env.NODE_ENV !== "production") {
-    return { otp: request.completionOtp };
-  }
-
-  return { message: "OTP has been generated. Please confirm with your collector." };
+  return { otp: request.completionOtp };
 };
 
 // ─── Verify OTP & Complete Pickup (Atomic) ────────────────────────────────────
@@ -654,7 +683,7 @@ export const getPickupOtp = async (requestId, residentId) => {
  */
 export const verifyCompletionOtp = async (requestId, collectorId, otp) => {
   // Atomic: succeed only if OTP matches, not expired, and status is correct
-  const request = await PickupRequest.findOneAndUpdate(
+  const matched = await PickupRequest.findOneAndUpdate(
     {
       _id: requestId,
       collector: collectorId,
@@ -678,36 +707,82 @@ export const verifyCompletionOtp = async (requestId, collectorId, otp) => {
     { new: true }
   );
 
-  if (request) return request;
-
-  // OTP didn't match, expired, or wrong status — increment attempts
-  const updated = await PickupRequest.findOneAndUpdate(
-    {
-      _id: requestId,
-      collector: collectorId,
-      status: "weight_verified",
-      completionOtp: { $ne: null },
-    },
-    { $inc: { otpAttempts: 1 } },
-    { new: true }
-  );
-
-  if (!updated) {
-    throw new Error("Pickup request not found or invalid state");
-  }
-
-  if (updated.otpAttempts >= 5) {
-    await PickupRequest.findByIdAndUpdate(requestId, {
-      $set: {
-        completionOtp: null,
-        completionOtpExpiresAt: null,
-        otpAttempts: 0,
+  if (!matched) {
+    // OTP didn't match, expired, or wrong status — increment attempts
+    const updated = await PickupRequest.findOneAndUpdate(
+      {
+        _id: requestId,
+        collector: collectorId,
+        status: "weight_verified",
+        completionOtp: { $ne: null },
       },
-    });
-    throw new Error("Maximum OTP attempts exceeded. Please generate a new OTP.");
+      { $inc: { otpAttempts: 1 } },
+      { new: true }
+    );
+
+    if (!updated) {
+      throw new Error("Pickup request not found or invalid state");
+    }
+
+    if (updated.otpAttempts >= 5) {
+      await PickupRequest.findByIdAndUpdate(requestId, {
+        $set: {
+          completionOtp: null,
+          completionOtpExpiresAt: null,
+          otpAttempts: 0,
+        },
+      });
+      throw new Error("Maximum OTP attempts exceeded. Please generate a new OTP.");
+    }
+
+    throw new Error("Invalid OTP");
   }
 
-  throw new Error("Invalid OTP");
+  // Fetch users and send completion emails
+  try {
+    const completed = await PickupRequest.findById(requestId).lean();
+
+    if (completed) {
+      const [resident, collector] = await Promise.all([
+        User.findById(completed.resident).select("name email"),
+        User.findById(completed.collector).select("name email"),
+      ]);
+
+      const sendTo = [];
+
+      if (resident?.email) {
+        sendTo.push(
+          sendPickupCompletedToResident(
+            resident.email,
+            resident.name,
+            completed.pickupAddress,
+            completed.actualWeight,
+            completed.finalAmount,
+            collector?.name || "Collector"
+          )
+        );
+      }
+
+      if (collector?.email) {
+        sendTo.push(
+          sendPickupCompletedToCollector(
+            collector.email,
+            collector.name,
+            completed.pickupAddress,
+            completed.actualWeight,
+            completed.finalAmount,
+            resident?.name || "Resident"
+          )
+        );
+      }
+
+      await Promise.allSettled(sendTo);
+    }
+  } catch (e) {
+    console.error("Failed to send completion emails:", e);
+  }
+
+  return await PickupRequest.findById(requestId);
 };
 
 // ─── Expire Stale Requests ────────────────────────────────────────────────────

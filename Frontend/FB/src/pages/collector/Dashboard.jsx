@@ -20,6 +20,7 @@ import {
   rejectPickupService,
   arriveAtPickupService,
   verifyWeightService,
+  generateOtpService,
   verifyOtpService,
 } from "../../services/pickupService";
 import { ROUTES } from "../../utils/constants";
@@ -197,6 +198,18 @@ const Dashboard = () => {
       await verifyWeightService(id, w);
       toast.success("Weight verified");
       loadData();
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleGenerateOtp = async (id) => {
+    setActionLoading(`otp-${id}`);
+    try {
+      await generateOtpService(id);
+      toast.success("New OTP generated and sent to resident");
     } catch (error) {
       toast.error(getErrorMessage(error));
     } finally {
@@ -490,12 +503,21 @@ const Dashboard = () => {
                           />
                         )}
         {req.status === "weight_verified" && (
-          <ActionButton
-            onClick={() => handleVerifyOtp(req._id)}
-            label="Enter OTP"
-            icon={<FaClipboardCheck />}
-            color="bg-brand-600 hover:bg-brand-700"
-          />
+          <>
+            <ActionButton
+              onClick={() => handleVerifyOtp(req._id)}
+              label="Enter OTP"
+              icon={<FaClipboardCheck />}
+              color="bg-brand-600 hover:bg-brand-700"
+            />
+            <ActionButton
+              onClick={() => handleGenerateOtp(req._id)}
+              loading={actionLoading === `otp-${req._id}`}
+              label="Generate OTP"
+              icon={<FaKey />}
+              color="bg-amber-600 hover:bg-amber-700"
+            />
+          </>
         )}
                       </div>
                     </div>

@@ -37,5 +37,8 @@ export const generateOtp = (id) =>
 export const getPickupOtp = (id) =>
   axiosInstance.get(API_ENDPOINTS.GET_PICKUP_OTP(id));
 
+export const regenerateOtp = (id) =>
+  axiosInstance.post(API_ENDPOINTS.REGENERATE_OTP(id));
+
 export const verifyOtp = (id, otp) =>
   axiosInstance.patch(API_ENDPOINTS.VERIFY_OTP(id), { otp });

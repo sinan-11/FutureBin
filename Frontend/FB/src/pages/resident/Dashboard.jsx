@@ -1,14 +1,14 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FaRecycle, FaPlus, FaTrashAlt, FaTruck, FaWeight,
   FaMoneyBillWave, FaMapMarkerAlt, FaCheckCircle,
-  FaTimesCircle, FaHourglass, FaHome, FaWallet,
+  FaTimesCircle, FaHourglass, FaHome, FaWallet, FaKey,
 } from "react-icons/fa";
 import { toast } from "react-toastify";
 
 import useAuth from "../../hooks/useAuth";
-import { getMyPickupsService, cancelPickupService } from "../../services/pickupService";
+import { getMyPickupsService, cancelPickupService, getPickupOtpService } from "../../services/pickupService";
 import { ROUTES } from "../../utils/constants";
 import { getErrorMessage, formatDateTime, capitalize } from "../../utils/helpers";
 import WalletPanel from "../../components/WalletPanel";
@@ -45,23 +45,94 @@ const ProgressBar = ({ currentStatus }) => {
   );
 };
 
+const POLL_INTERVAL = 10000;
+
+const OTPModal = ({ requestId, onClose }) => {
+  const [otpData, setOtpData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchOtp = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await getPickupOtpService(requestId);
+      setOtpData(res.data || res);
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+      onClose();
+    } finally {
+      setLoading(false);
+    }
+  }, [requestId]);
+
+  useEffect(() => {
+    fetchOtp();
+  }, [fetchOtp]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+      <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl animate-fade-in text-center">
+        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-brand-50">
+          <FaKey className="h-6 w-6 text-brand-600" />
+        </div>
+        <h3 className="text-lg font-bold text-gray-800 mb-2">OTP Verification</h3>
+        {loading ? (
+          <div className="flex justify-center py-4">
+            <svg className="h-6 w-6 animate-spin text-brand-600" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+          </div>
+        ) : otpData?.otp ? (
+          <>
+            <p className="text-sm text-gray-400 mb-3">Share this OTP with your collector to complete the pickup.</p>
+            <div className="mx-auto mb-4 inline-block rounded-xl bg-gray-50 px-6 py-3">
+              <span className="text-3xl font-bold tracking-[0.3em] text-gray-800">{otpData.otp}</span>
+            </div>
+          </>
+        ) : (
+          <p className="text-sm text-gray-500 py-4">Could not retrieve OTP. Please ask your collector to generate a new one.</p>
+        )}
+        <button
+          onClick={onClose}
+          className="mt-2 w-full rounded-xl bg-gray-100 py-3 text-sm font-semibold text-gray-600 transition hover:bg-gray-200"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  );
+};
+
 const Dashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const pollRef = useRef(null);
 
   const [requests, setRequests] = useState({ current: [], completed: [], cancelled: [] });
   const [cancelling, setCancelling] = useState(null);
   const [showWallet, setShowWallet] = useState(false);
+  const [otpModal, setOtpModal] = useState(null);
 
   const loadRequests = useCallback(async () => {
     try {
       const data = await getMyPickupsService();
-      setRequests(data);
+      setRequests((prev) => {
+        const prevActive = prev.current[0];
+        const newActive = data.current[0];
+        if (newActive && prevActive && prevActive._id === newActive._id) {
+          if (prevActive.status !== "weight_verified" && newActive.status === "weight_verified") {
+            setTimeout(() => setOtpModal(newActive._id), 500);
+          }
+        }
+        return data;
+      });
     } catch { /* silent */ }
   }, []);
 
   useEffect(() => {
     loadRequests();
+    pollRef.current = setInterval(loadRequests, POLL_INTERVAL);
+    return () => clearInterval(pollRef.current);
   }, [loadRequests]);
 
   const handleCancel = async (id) => {
@@ -192,6 +263,14 @@ const Dashboard = () => {
                   <span className="flex items-center gap-1"><FaMoneyBillWave />₹{activeRequest.estimatedPrice}</span>
                 </div>
 
+                {activeRequest.status === "weight_verified" && (
+                  <button
+                    onClick={() => setOtpModal(activeRequest._id)}
+                    className="w-full rounded-xl bg-amber-50 border-2 border-amber-200 py-2.5 text-sm font-bold text-amber-700 hover:bg-amber-100 transition"
+                  >
+                    <span className="flex items-center justify-center gap-2"><FaKey className="h-4 w-4" /> View OTP</span>
+                  </button>
+                )}
                 {(activeRequest.status === "broadcasting" || activeRequest.status === "accepted") && (
                   <button
                     onClick={() => handleCancel(activeRequest._id)}
@@ -242,6 +321,7 @@ const Dashboard = () => {
         )}
       </main>
 
+      {otpModal && <OTPModal requestId={otpModal} onClose={() => setOtpModal(null)} />}
       {showWallet && <WalletPanel onClose={() => setShowWallet(false)} />}
     </div>
   );

@@ -12,6 +12,7 @@ import {
   updatePickupStatusService,
   arriveAtPickupService,
   verifyWeightService,
+  generateOtpService,
   verifyOtpService,
 } from "../../services/pickupService";
 import { ROUTES } from "../../utils/constants";
@@ -63,6 +64,7 @@ const PickupCard = ({
   onArrive,
   onVerifyWeight,
   onVerifyOtp,
+  onGenerateOtp,
   loading,
 }) => {
   const badge = STATUS_BADGES[request.status] || { label: request.status, color: "bg-gray-50 text-gray-600 ring-gray-200" };
@@ -147,12 +149,21 @@ const PickupCard = ({
             />
           )}
           {request.status === "weight_verified" && (
-            <ActionButton
-              onClick={() => onVerifyOtp(request._id)}
-              label="Enter OTP"
-              icon={<FaClipboardCheck className="h-3.5 w-3.5" />}
-              color="bg-brand-600 hover:bg-brand-700"
-            />
+            <>
+              <ActionButton
+                onClick={() => onVerifyOtp(request._id)}
+                label="Enter OTP"
+                icon={<FaClipboardCheck className="h-3.5 w-3.5" />}
+                color="bg-brand-600 hover:bg-brand-700"
+              />
+              <ActionButton
+                onClick={() => onGenerateOtp(request._id)}
+                loading={loading === `otp-${request._id}`}
+                label="Generate OTP"
+                icon={<FaKey className="h-3.5 w-3.5" />}
+                color="bg-amber-600 hover:bg-amber-700"
+              />
+            </>
           )}
           {isFinal && (
             <span className="inline-flex items-center gap-1.5 rounded-xl bg-green-50 px-4 py-2.5 text-sm font-bold text-green-700">
@@ -267,6 +278,19 @@ const MyPickups = () => {
     }
   };
 
+  const handleGenerateOtp = async (id) => {
+    setActionLoading(`otp-${id}`);
+    try {
+      await generateOtpService(id);
+      toast.success("New OTP generated and sent to resident");
+      loadPickups();
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const handleVerifyOtp = (id) => {
     setOtpModal(id);
     setOtpInput("");
@@ -323,6 +347,7 @@ const MyPickups = () => {
               onArrive={handleArrive}
               onVerifyWeight={handleVerifyWeight}
               onVerifyOtp={handleVerifyOtp}
+              onGenerateOtp={handleGenerateOtp}
               loading={actionLoading}
             />
           ))}
@@ -336,6 +361,7 @@ const MyPickups = () => {
               onArrive={handleArrive}
               onVerifyWeight={handleVerifyWeight}
               onVerifyOtp={handleVerifyOtp}
+              onGenerateOtp={handleGenerateOtp}
               loading={actionLoading}
             />
           ))}

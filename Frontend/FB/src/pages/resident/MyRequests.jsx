@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FaRecycle, FaPlus, FaCheckCircle, FaTimesCircle,
@@ -39,20 +39,22 @@ const OTPModal = ({ requestId, onClose }) => {
   const [otpData, setOtpData] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const fetchOtp = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await getPickupOtpService(requestId);
+      setOtpData(res.data || res);
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+      onClose();
+    } finally {
+      setLoading(false);
+    }
+  }, [requestId]);
+
   useEffect(() => {
-    const fetch = async () => {
-      try {
-        const res = await getPickupOtpService(requestId);
-        setOtpData(res.data || res);
-      } catch (error) {
-        toast.error(getErrorMessage(error));
-        onClose();
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetch();
-  }, [requestId, onClose]);
+    fetchOtp();
+  }, [fetchOtp]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
@@ -76,7 +78,7 @@ const OTPModal = ({ requestId, onClose }) => {
             </div>
           </>
         ) : (
-          <p className="text-sm text-gray-500 py-4">{otpData?.message || "OTP has been generated. Please confirm with your collector."}</p>
+          <p className="text-sm text-gray-500 py-4">Could not retrieve OTP. Please ask your collector to generate a new one.</p>
         )}
         <button
           onClick={onClose}
@@ -198,13 +200,16 @@ const Section = ({ title, count, icon: Icon, children }) => (
   </div>
 );
 
+const POLL_INTERVAL = 10000;
+
 const MyRequests = () => {
   const navigate = useNavigate();
+  const pollRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [requests, setRequests] = useState({ current: [], completed: [], cancelled: [] });
   const [cancelling, setCancelling] = useState(null);
 
-  const loadRequests = async () => {
+  const loadRequests = useCallback(async () => {
     try {
       const data = await getMyPickupsService();
       setRequests(data);
@@ -213,9 +218,13 @@ const MyRequests = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  useEffect(() => { loadRequests(); }, []);
+  useEffect(() => {
+    loadRequests();
+    pollRef.current = setInterval(loadRequests, POLL_INTERVAL);
+    return () => clearInterval(pollRef.current);
+  }, [loadRequests]);
 
   const handleCancel = async (id) => {
     setCancelling(id);

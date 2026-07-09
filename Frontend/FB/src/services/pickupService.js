@@ -173,6 +173,22 @@ export const generateOtpService = async (id) => {
   }
 };
 
+export const regenerateOtpService = async (id) => {
+  store.dispatch(setPickupLoading(true));
+  store.dispatch(clearPickupError());
+
+  try {
+    const response = await pickupApi.regenerateOtp(id);
+    return response.data;
+  } catch (error) {
+    const message = getErrorMessage(error);
+    store.dispatch(setPickupError(message));
+    throw error;
+  } finally {
+    store.dispatch(setPickupLoading(false));
+  }
+};
+
 export const getPickupOtpService = async (id) => {
   store.dispatch(setPickupLoading(true));
   store.dispatch(clearPickupError());

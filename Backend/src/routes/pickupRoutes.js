@@ -8,6 +8,7 @@ import {
   verifyWeightHandler,
   generateOtpHandler,
   getOtpHandler,
+  regenerateOtpHandler,
   verifyOtpHandler,
   getMyRequests,
   getAvailable,
@@ -51,6 +52,13 @@ router.get(
   protect,
   authorize("resident"),
   getOtpHandler
+);
+
+router.post(
+  "/:id/regenerate-otp",
+  protect,
+  authorize("resident"),
+  regenerateOtpHandler
 );
 
 // ─── Collector Routes ─────────────────────────────────────────────────────────

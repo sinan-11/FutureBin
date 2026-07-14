@@ -5,6 +5,7 @@ import {
   FaArrowRight, FaRecycle, FaWeight,
   FaMoneyBillWave, FaUser, FaBroadcastTower, FaHome, FaWallet, FaTimes, FaKey, FaClipboardCheck,
   FaCalendarAlt,
+  FaMap,
 } from "react-icons/fa";
 import { toast } from "react-toastify";
 
@@ -30,6 +31,7 @@ import { ROUTES } from "../../utils/constants";
 import { getErrorMessage, formatDateTime, capitalize } from "../../utils/helpers";
 import { playNotificationSound } from "../../utils/sound";
 import WalletPanel from "../../components/WalletPanel";
+import PickupLocationMap from "../../components/map/PickupLocationMap";
 import OtpInput from "../../components/OtpInput";
 
 const POLL_INTERVAL = 10000;
@@ -62,6 +64,7 @@ const Dashboard = () => {
   const [otpModal, setOtpModal] = useState(null);
   const [weightInput, setWeightInput] = useState("");
   const [otpInput, setOtpInput] = useState("");
+  const [mapOpen, setMapOpen] = useState(null);
 
   const loadProfile = useCallback(async () => {
     try {
@@ -334,6 +337,10 @@ const Dashboard = () => {
     }
   };
 
+  const toggleMap = (id) => {
+    setMapOpen((prev) => (prev === id ? null : id));
+  };
+
   const p = profile || {};
   const totalAvailable = available.length;
 
@@ -509,6 +516,20 @@ const Dashboard = () => {
                         </button>
                       </div>
                     </div>
+
+                    {/* Map Toggle */}
+                    {req.location?.coordinates && (
+                      <div className="mt-3 pt-3 border-t border-gray-100">
+                        <button
+                          onClick={() => toggleMap(`avail-${req._id}`)}
+                          className="flex items-center gap-1.5 text-xs font-medium text-brand-600 hover:text-brand-700 transition"
+                        >
+                          <FaMap className="h-3 w-3" />
+                          {mapOpen === `avail-${req._id}` ? "Hide Map" : "View Map"}
+                        </button>
+                        {mapOpen === `avail-${req._id}` && <PickupLocationMap pickup={req} />}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -605,6 +626,20 @@ const Dashboard = () => {
         )}
                       </div>
                     </div>
+
+                    {/* Map Toggle */}
+                    {req.location?.coordinates && (
+                      <div className="mt-3 pt-3 border-t border-gray-100">
+                        <button
+                          onClick={() => toggleMap(`active-${req._id}`)}
+                          className="flex items-center gap-1.5 text-xs font-medium text-brand-600 hover:text-brand-700 transition"
+                        >
+                          <FaMap className="h-3 w-3" />
+                          {mapOpen === `active-${req._id}` ? "Hide Map" : "View Map"}
+                        </button>
+                        {mapOpen === `active-${req._id}` && <PickupLocationMap pickup={req} />}
+                      </div>
+                    )}
                   </div>
                 );
               })}

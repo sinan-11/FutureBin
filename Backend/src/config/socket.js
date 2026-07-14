@@ -90,11 +90,17 @@ export const getIO = () => io;
  * Emit an event to a single collector by their user ID.
  */
 export const notifyCollectorById = (collectorId, event, data) => {
-  if (!io) return;
-  const sockets = collectorSockets.get(String(collectorId));
+  if (!io) {
+    console.log(`[SOCKET] notifyCollectorById: io is null, cannot emit "${event}"`);
+    return;
+  }
+  const key = String(collectorId);
+  const sockets = collectorSockets.get(key);
+  console.log(`[SOCKET] notifyCollectorById: key="${key}", found ${sockets ? sockets.size : 0} socket(s), map has ${collectorSockets.size} collector(s)`);
   if (sockets) {
     for (const sid of sockets) {
       io.to(sid).emit(event, data);
+      console.log(`[SOCKET] Emitted "${event}" to socket ${sid}`);
     }
   }
 };

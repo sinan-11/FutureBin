@@ -453,16 +453,21 @@ export const verifyOtpHandler = async (req, res) => {
 
 export const cancelRequestHandler = async (req, res) => {
   try {
-    const request = await cancelRequest(
+    const { request, collectorId } = await cancelRequest(
       req.params.id,
       req.user.id
     );
 
-    if (request.collector) {
-      notifyCollectorById(request.collector, "pickup-cancelled", {
+    if (collectorId) {
+      notifyCollectorById(collectorId, "pickup-cancelled", {
         request,
       });
-      console.log(`[SOCKET] pickup-cancelled sent to collector ${request.collector}`);
+      console.log(`[SOCKET] pickup-cancelled sent to collector ${collectorId}`);
+    } else if (request.eligibleCollectors && request.eligibleCollectors.length > 0) {
+      notifyCollectorsByIds(request.eligibleCollectors, "pickup-cancelled", {
+        request,
+      });
+      console.log(`[SOCKET] pickup-cancelled broadcast to ${request.eligibleCollectors.length} eligible collector(s)`);
     }
 
     notifyResidentById(req.user.id, "pickup-cancelled", {

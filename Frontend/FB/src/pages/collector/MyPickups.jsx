@@ -4,6 +4,7 @@ import {
   FaTruck, FaCheckCircle, FaHourglass, FaWeight,
   FaMoneyBillWave, FaUser, FaArrowRight,
   FaArrowLeft, FaRecycle, FaKey, FaClipboardCheck,
+  FaMap,
 } from "react-icons/fa";
 import { toast } from "react-toastify";
 
@@ -21,6 +22,7 @@ import { ROUTES } from "../../utils/constants";
 import { getErrorMessage, formatDateTime, capitalize } from "../../utils/helpers";
 import { ListSkeleton } from "../../components/Skeleton";
 import OtpInput from "../../components/OtpInput";
+import PickupLocationMap from "../../components/map/PickupLocationMap";
 
 const STATUS_BADGES = {
   accepted: { label: "Accepted", color: "bg-indigo-50 text-indigo-700 ring-indigo-200" },
@@ -69,6 +71,8 @@ const PickupCard = ({
   onVerifyOtp,
   onGenerateOtp,
   loading,
+  mapOpen,
+  onToggleMap,
 }) => {
   const badge = STATUS_BADGES[request.status] || { label: request.status, color: "bg-gray-50 text-gray-600 ring-gray-200" };
   const isFinal = request.status === "completed";
@@ -166,6 +170,20 @@ const PickupCard = ({
           )}
         </div>
       </div>
+
+      {/* Map Toggle */}
+      {!isFinal && request.location?.coordinates && (
+        <div className="mt-3 pt-3 border-t border-gray-100">
+          <button
+            onClick={() => onToggleMap(request._id)}
+            className="flex items-center gap-1.5 text-xs font-medium text-brand-600 hover:text-brand-700 transition"
+          >
+            <FaMap className="h-3 w-3" />
+            {mapOpen === request._id ? "Hide Map" : "View Map"}
+          </button>
+          {mapOpen === request._id && <PickupLocationMap pickup={request} />}
+        </div>
+      )}
     </div>
   );
 };
@@ -225,6 +243,7 @@ const MyPickups = () => {
   const [otpModal, setOtpModal] = useState(null);
   const [weightInput, setWeightInput] = useState("");
   const [otpInput, setOtpInput] = useState("");
+  const [mapOpen, setMapOpen] = useState(null);
 
   const loadPickups = useCallback(async () => {
     try {
@@ -399,6 +418,10 @@ const MyPickups = () => {
     }
   };
 
+  const toggleMap = (id) => {
+    setMapOpen((prev) => (prev === id ? null : id));
+  };
+
   if (loading) return <div className="animate-fade-in"><ListSkeleton count={3} /></div>;
 
   return (
@@ -427,6 +450,8 @@ const MyPickups = () => {
               onVerifyOtp={handleVerifyOtp}
               onGenerateOtp={handleGenerateOtp}
               loading={actionLoading}
+              mapOpen={mapOpen}
+              onToggleMap={toggleMap}
             />
           ))}
         </Section>
@@ -441,6 +466,8 @@ const MyPickups = () => {
               onVerifyOtp={handleVerifyOtp}
               onGenerateOtp={handleGenerateOtp}
               loading={actionLoading}
+              mapOpen={mapOpen}
+              onToggleMap={toggleMap}
             />
           ))}
         </Section>

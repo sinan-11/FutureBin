@@ -287,13 +287,15 @@ export const cancelRequest = async (requestId, residentId) => {
     );
   }
 
+  const collectorId = request.collector;
+
   request.status = "cancelled";
   request.cancelledAt = new Date();
   request.collector = null;
 
   await request.save();
 
-  return request;
+  return { request, collectorId };
 };
 
 const notifyPickupOtp = async (resident, otp, pickupAddress) => {

@@ -1,12 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaRecycle, FaWeight, FaMapMarkerAlt, FaCalendarAlt, FaTrashAlt, FaArrowLeft, FaCheck } from "react-icons/fa";
+import { FaTrashAlt, FaArrowLeft } from "react-icons/fa";
 import { toast } from "react-toastify";
 
-import Button from "../../components/Button";
-import Card from "../../components/Card";
-import Input from "../../components/Input";
-import Select from "../../components/Select";
+import LocationPickerMap from "../../components/map/LocationPickerMap";
 
 import { createPickupService } from "../../services/pickupService";
 import { ROUTES } from "../../utils/constants";
@@ -33,7 +30,6 @@ const CreateRequest = () => {
   });
 
   const [errors, setErrors] = useState({});
-  const [locationLoading, setLocationLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const now = new Date();
@@ -46,24 +42,13 @@ const CreateRequest = () => {
     setErrors((prev) => ({ ...prev, [e.target.name]: "" }));
   };
 
-  const handleGetLocation = () => {
-    if (!navigator.geolocation) {
-      toast.error("Geolocation is not supported");
-      return;
-    }
-    setLocationLoading(true);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { longitude, latitude } = position.coords;
-        setForm((prev) => ({ ...prev, coordinates: [longitude, latitude] }));
-        setLocationLoading(false);
-        toast.success("Location captured");
-      },
-      () => {
-        setLocationLoading(false);
-        toast.error("Failed to get location. Enable GPS and try again.");
-      }
-    );
+  const handleLocationChange = ({ coordinates, address }) => {
+    setForm((prev) => ({
+      ...prev,
+      coordinates,
+      pickupAddress: address || prev.pickupAddress,
+    }));
+    setErrors((prev) => ({ ...prev, coordinates: "" }));
   };
 
   const validate = () => {
@@ -71,7 +56,7 @@ const CreateRequest = () => {
     if (!form.wasteType) errs.wasteType = "Select waste type";
     if (!form.estimatedWeight || Number(form.estimatedWeight) <= 0) errs.estimatedWeight = "Weight must be greater than 0";
     if (!form.pickupAddress.trim()) errs.pickupAddress = "Address is required";
-    if (!form.coordinates) errs.coordinates = "Get your location first";
+    if (!form.coordinates) errs.coordinates = "Please select a pickup location on the map";
     if (form.scheduledAt && new Date(form.scheduledAt) <= new Date()) {
       errs.scheduledAt = "Scheduled time must be in the future";
     }
@@ -194,31 +179,13 @@ const CreateRequest = () => {
 
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700">Pickup Location</label>
-              <p className="mb-1.5 text-xs text-gray-400">Enable GPS to auto-detect</p>
-              <button
-                type="button"
-                onClick={handleGetLocation}
-                disabled={locationLoading}
-                className={`flex w-full items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-semibold transition active:scale-[0.97] ${
-                  form.coordinates
-                    ? "border-green-200 bg-green-50 text-green-700"
-                    : "border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100"
-                }`}
-              >
-                {locationLoading ? (
-                  <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                ) : form.coordinates ? (
-                  <FaCheck className="h-4 w-4" />
-                ) : (
-                  <FaMapMarkerAlt className="h-4 w-4" />
-                )}
-                {locationLoading ? "Detecting..." : form.coordinates ? "Location Set" : "Get Current Location"}
-              </button>
-              {errors.coordinates && <p className="mt-1 text-xs text-red-500">{errors.coordinates}</p>}
+              <p className="mb-1.5 text-xs text-gray-400">Tap the map or drag the marker</p>
             </div>
+          </div>
+
+          <div>
+            <LocationPickerMap onChange={handleLocationChange} />
+            {errors.coordinates && <p className="mt-1 text-xs text-red-500">{errors.coordinates}</p>}
           </div>
 
           <div>

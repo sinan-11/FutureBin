@@ -3,16 +3,10 @@ import PickupRequest from "../models/PickupRequest.js";
 import User from "../models/User.js";
 import { sendPickupOtp, sendPickupCompletedToResident, sendPickupCompletedToCollector } from "../utils/sendEmail.js";
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
 const PRICE_PER_KG = Number(process.env.PICKUP_PRICE_PER_KG) || 5;
 const SEARCH_RADIUS = Number(process.env.PICKUP_SEARCH_RADIUS) || 5000;
 const EXPIRY_MINUTES = Number(process.env.PICKUP_EXPIRY_MINUTES) || 30;
 
-/**
- * Valid status transitions.
- * Key: current status → values: allowed next statuses.
- */
 const VALID_TRANSITIONS = {
   broadcasting: ["accepted", "cancelled", "expired"],
   accepted: ["collector_arrived", "cancelled"],
@@ -20,9 +14,6 @@ const VALID_TRANSITIONS = {
   weight_verified: ["completed"],
 };
 
-/**
- * Timestamp fields that should be set for each status.
- */
 const STATUS_TIMESTAMPS = {
   accepted: "acceptedAt",
   collector_arrived: "arrivedAt",
@@ -30,32 +21,10 @@ const STATUS_TIMESTAMPS = {
   cancelled: "cancelledAt",
 };
 
-// ─── Price Estimation ─────────────────────────────────────────────────────────
-
-/**
- * Calculate estimated pickup price based on weight.
- * Uses PICKUP_PRICE_PER_KG env variable with a default of 5.
- *
- * @param {number} weight - Weight in kg
- * @returns {number} Estimated price
- */
 export const calculatePrice = (weight) => {
   return Math.round(weight * PRICE_PER_KG * 100) / 100;
 };
 
-// ─── Nearby Collector Search ──────────────────────────────────────────────────
-
-/**
- * Find nearby available collectors using MongoDB $near.
- *
- * The $near query uses the 2dsphere index on the User collection's
- * location field to efficiently find collectors within the given radius,
- * sorted by proximity (nearest first).
- *
- * @param {number[]} coordinates - [longitude, latitude]
- * @param {number} [maxDistance] - Search radius in meters
- * @returns {Promise<Object[]>} Top 10 nearest collectors
- */
 export const findNearbyCollectors = async (
   coordinates,
   maxDistance = SEARCH_RADIUS
@@ -80,26 +49,6 @@ export const findNearbyCollectors = async (
   return collectors;
 };
 
-// ─── Create Pickup Request ────────────────────────────────────────────────────
-
-/**
- * Create a new pickup request and broadcast it to nearby collectors.
- *
- * 1. Validate and save the request with status "broadcasting".
- * 2. Find nearby available collectors.
- * 3. Store eligible collector IDs on the request for future WebSocket targeting.
- *
- * @param {Object} data - Request data from the client
- * @param {string} data.wasteType
- * @param {number} data.estimatedWeight
- * @param {string} data.pickupAddress
- * @param {number[]} data.coordinates - [longitude, latitude]
- * @param {string} [data.description]
- * @param {string[]} [data.images]
- * @param {string} [data.scheduledAt] - ISO date string
- * @param {string} residentId - Resident's user ID
- * @returns {Promise<{request: Object, nearbyCollectors: Object[]}>}
- */
 export const createPickupRequest = async (data, residentId) => {
   const {
     wasteType,
@@ -129,13 +78,10 @@ export const createPickupRequest = async (data, residentId) => {
     status: "broadcasting",
   });
 
-  // Find nearby available collectors for broadcasting
   const nearbyCollectors = await findNearbyCollectors(coordinates);
-
   const collectorIds = nearbyCollectors.map((c) => c._id);
 
   if (collectorIds.length > 0) {
-    // Store eligible collectors on the request for future WebSocket targeting
     request.eligibleCollectors = collectorIds;
     await request.save();
   }
@@ -146,25 +92,6 @@ export const createPickupRequest = async (data, residentId) => {
   };
 };
 
-// ─── Atomic Accept ────────────────────────────────────────────────────────────
-
-/**
- * Atomically accept a pickup request.
- *
- * Uses findOneAndUpdate with conditions that ensure:
- * - status is still "broadcasting"
- * - collector has not already been assigned (collector is null)
- *
- * Since findOneAndUpdate is an atomic MongoDB operation, simultaneous
- * accept attempts by different collectors are safe — only the first
- * one to execute will succeed. The others will receive null and can
- * be notified that the request was already taken.
- *
- * @param {string} requestId - Pickup request ID
- * @param {string} collectorId - Collector's user ID
- * @returns {Promise<Object>} Updated request
- * @throws {Error} 409 if request was already accepted or 404 if not found
- */
 export const acceptPickupRequest = async (requestId, collectorId) => {
   const request = await PickupRequest.findOneAndUpdate(
     {
@@ -183,7 +110,6 @@ export const acceptPickupRequest = async (requestId, collectorId) => {
   );
 
   if (!request) {
-    // Check if it exists at all vs already taken
     const existing = await PickupRequest.findById(requestId);
 
     if (!existing) {
@@ -198,15 +124,6 @@ export const acceptPickupRequest = async (requestId, collectorId) => {
   return request;
 };
 
-// ─── Resident View ────────────────────────────────────────────────────────────
-
-/**
- * Get all pickup requests for a resident.
- * Sorted newest first.
- *
- * @param {string} residentId
- * @returns {Promise<Object>} Requests grouped by category
- */
 export const getResidentRequests = async (residentId) => {
   const requests = await PickupRequest.find({ resident: residentId })
     .populate("collector", "name collectorDetails.phone")
@@ -234,16 +151,6 @@ export const getResidentRequests = async (residentId) => {
   return { current, completed, cancelled };
 };
 
-// ─── Collector View ───────────────────────────────────────────────────────────
-
-/**
- * Get pickup requests assigned to a collector.
- * Only returns requests where this collector is the assigned collector.
- * Sorted newest first.
- *
- * @param {string} collectorId
- * @returns {Promise<Object[]>} Assigned requests grouped by status category
- */
 export const getCollectorRequests = async (collectorId) => {
   const requests = await PickupRequest.find({
     collector: collectorId,
@@ -279,17 +186,6 @@ export const getCollectorRequests = async (collectorId) => {
   return { active, completed };
 };
 
-// ─── Reject Pickup Request ────────────────────────────────────────────────────
-
-/**
- * Add a collector to the rejectedBy list so the request no longer
- * appears in their available requests feed.
- *
- * @param {string} requestId
- * @param {string} collectorId
- * @returns {Promise<Object>} Updated request
- * @throws {Error} 404 if not found or if collector is not eligible
- */
 export const rejectPickupRequest = async (requestId, collectorId) => {
   const request = await PickupRequest.findOneAndUpdate(
     {
@@ -316,15 +212,6 @@ export const rejectPickupRequest = async (requestId, collectorId) => {
   return request;
 };
 
-// ─── Available Requests (Collector) ─────────────────────────────────────────
-
-/**
- * Get all pickup requests that are currently broadcasting.
- * Collectors use this to see available pickups they can accept.
- * Sorted newest first.
- *
- * @returns {Promise<Object[]>} Available requests
- */
 export const getAvailableRequests = async (collectorId) => {
   const filter = { status: "broadcasting" };
 
@@ -339,18 +226,6 @@ export const getAvailableRequests = async (collectorId) => {
   return requests;
 };
 
-// ─── Status Update ────────────────────────────────────────────────────────────
-
-/**
- * Update the status of a pickup request.
- * Validates the transition is allowed before applying.
- *
- * @param {string} requestId
- * @param {string} collectorId - Must be the assigned collector
- * @param {string} newStatus - Target status
- * @returns {Promise<Object>} Updated request
- * @throws {Error} 400 for invalid transitions, 404 if not found
- */
 export const updateRequestStatus = async (
   requestId,
   collectorId,
@@ -393,18 +268,6 @@ export const updateRequestStatus = async (
   return updated;
 };
 
-// ─── Cancel Request ───────────────────────────────────────────────────────────
-
-/**
- * Cancel a pickup request.
- * Only allowed when status is "broadcasting" or "accepted".
- * Once the collector has arrived, cancellation is no longer permitted.
- *
- * @param {string} requestId
- * @param {string} residentId - Must be the requesting resident
- * @returns {Promise<Object>} Updated request
- * @throws {Error} 400 if cannot cancel, 404 if not found
- */
 export const cancelRequest = async (requestId, residentId) => {
   const request = await PickupRequest.findOne({
     _id: requestId,
@@ -433,18 +296,6 @@ export const cancelRequest = async (requestId, residentId) => {
   return request;
 };
 
-// ─── OTP Notification Placeholder ─────────────────────────────────────────────
-
-/**
- * Send the pickup completion OTP to the resident via email.
- *
- * Silently catches errors so OTP generation is not blocked
- * by a transient email failure.
- *
- * @param {Object} resident - Resident user document
- * @param {string} otp - 6-digit OTP
- * @param {string} pickupAddress - Address for the email body
- */
 const notifyPickupOtp = async (resident, otp, pickupAddress) => {
   try {
     await sendPickupOtp(resident.email, otp, pickupAddress);
@@ -454,16 +305,6 @@ const notifyPickupOtp = async (resident, otp, pickupAddress) => {
   }
 };
 
-// ─── Collector Arrived ────────────────────────────────────────────────────────
-
-/**
- * Mark that the collector has arrived at the pickup location.
- *
- * @param {string} requestId
- * @param {string} collectorId
- * @returns {Promise<Object>} Updated request
- * @throws {Error} 404 if not found or 400 if invalid status
- */
 export const arriveAtPickup = async (requestId, collectorId) => {
   const request = await PickupRequest.findOneAndUpdate(
     {
@@ -489,18 +330,6 @@ export const arriveAtPickup = async (requestId, collectorId) => {
   return request;
 };
 
-// ─── Verify Actual Weight ─────────────────────────────────────────────────────
-
-/**
- * Record the actual weight and calculate the final amount.
- * Reuses the existing calculatePrice utility.
- *
- * @param {string} requestId
- * @param {string} collectorId
- * @param {number} actualWeight
- * @returns {Promise<Object>} Updated request with actualWeight and finalAmount
- * @throws {Error} 400 if invalid weight or status
- */
 export const verifyActualWeight = async (requestId, collectorId, actualWeight) => {
   if (!actualWeight || Number(actualWeight) <= 0) {
     throw new Error("Actual weight must be greater than 0");
@@ -544,18 +373,6 @@ export const verifyActualWeight = async (requestId, collectorId, actualWeight) =
   return result;
 };
 
-// ─── Generate Completion OTP ──────────────────────────────────────────────────
-
-/**
- * Generate a 6-digit OTP for pickup completion verification.
- * If an OTP already exists it is replaced.
- * In non-production environments the OTP is included in the returned object.
- *
- * @param {string} requestId
- * @param {string} collectorId
- * @returns {Promise<Object>} Updated request (with otp in dev mode)
- * @throws {Error} 404 if not found or 400 if invalid status
- */
 export const generateCompletionOtp = async (requestId, collectorId) => {
   const request = await PickupRequest.findOne({
     _id: requestId,
@@ -591,17 +408,6 @@ export const generateCompletionOtp = async (requestId, collectorId) => {
   return result;
 };
 
-// ─── Resident: Regenerate OTP ─────────────────────────────────────────────────
-
-/**
- * Generate a new OTP for a pickup request (resident self-service).
- * Replaces any existing OTP and sends the new one via email.
- *
- * @param {string} requestId
- * @param {string} residentId
- * @returns {Promise<Object>} { otp } in dev, { message } in production
- * @throws {Error} 404 if not found or 400 if invalid status
- */
 export const regenerateCompletionOtp = async (requestId, residentId) => {
   const request = await PickupRequest.findOne({
     _id: requestId,
@@ -631,18 +437,6 @@ export const regenerateCompletionOtp = async (requestId, residentId) => {
   return { otp };
 };
 
-// ─── Resident: Get OTP ────────────────────────────────────────────────────────
-
-/**
- * Retrieve the OTP for the resident who created the pickup.
- * In development the actual OTP is returned.
- * In production a neutral message is returned instead.
- *
- * @param {string} requestId
- * @param {string} residentId
- * @returns {Promise<Object>} { otp } in dev, { message } in production
- * @throws {Error} 404 if not found
- */
 export const getPickupOtp = async (requestId, residentId) => {
   const request = await PickupRequest.findOne({
     _id: requestId,
@@ -658,31 +452,7 @@ export const getPickupOtp = async (requestId, residentId) => {
   return { otp: request.completionOtp };
 };
 
-// ─── Verify OTP & Complete Pickup (Atomic) ────────────────────────────────────
-
-/**
- * Atomically verify the OTP and mark the pickup as completed.
- *
- * Uses findOneAndUpdate with conditions that ensure:
- * - OTP matches
- * - OTP has not expired
- * - Status is still weight_verified
- *
- * Because the match-and-update is a single atomic MongoDB operation,
- * two near-simultaneous valid submissions cannot both complete the pickup.
- *
- * On failure the attempt counter is incremented (also atomically).
- * After 5 failed attempts the OTP is cleared and the collector must
- * generate a new one.
- *
- * @param {string} requestId
- * @param {string} collectorId
- * @param {string} otp - The 6-digit OTP to verify
- * @returns {Promise<Object>} Completed pickup request
- * @throws {Error} 400 on invalid/expired OTP or max attempts
- */
 export const verifyCompletionOtp = async (requestId, collectorId, otp) => {
-  // Atomic: succeed only if OTP matches, not expired, and status is correct
   const matched = await PickupRequest.findOneAndUpdate(
     {
       _id: requestId,
@@ -708,7 +478,6 @@ export const verifyCompletionOtp = async (requestId, collectorId, otp) => {
   );
 
   if (!matched) {
-    // OTP didn't match, expired, or wrong status — increment attempts
     const updated = await PickupRequest.findOneAndUpdate(
       {
         _id: requestId,
@@ -738,7 +507,6 @@ export const verifyCompletionOtp = async (requestId, collectorId, otp) => {
     throw new Error("Invalid OTP");
   }
 
-  // Fetch users and send completion emails
   try {
     const completed = await PickupRequest.findById(requestId).lean();
 
@@ -785,25 +553,23 @@ export const verifyCompletionOtp = async (requestId, collectorId, otp) => {
   return await PickupRequest.findById(requestId);
 };
 
-// ─── Expire Stale Requests ────────────────────────────────────────────────────
-
-/**
- * Expire pickup requests that have been in "broadcasting" status
- * beyond the configured timeout.
- *
- * Designed to be called by a cron job (e.g., node-cron, agenda).
- *
- * @returns {Promise<number>} Number of requests expired
- */
 export const expireStaleRequests = async () => {
   const cutoff = new Date(
     Date.now() - EXPIRY_MINUTES * 60 * 1000
   );
 
-  const result = await PickupRequest.updateMany(
+  const staleRequests = await PickupRequest.find({
+    status: "broadcasting",
+    createdAt: { $lt: cutoff },
+  }).select("_id resident eligibleCollectors");
+
+  if (staleRequests.length === 0) {
+    return { count: 0, expiredRequests: [] };
+  }
+
+  await PickupRequest.updateMany(
     {
-      status: "broadcasting",
-      createdAt: { $lt: cutoff },
+      _id: { $in: staleRequests.map((r) => r._id) },
     },
     {
       $set: {
@@ -812,5 +578,8 @@ export const expireStaleRequests = async () => {
     }
   );
 
-  return result.modifiedCount;
+  return {
+    count: staleRequests.length,
+    expiredRequests: staleRequests,
+  };
 };

@@ -16,7 +16,7 @@ const Home = () => {
             Smart Waste Management Platform
           </div>
 
-          <h1 className="mb-6 text-5xl font-extrabold leading-tight tracking-tight text-white md:text-7xl">
+          <h1 className="mb-6 text-4xl font-extrabold leading-tight tracking-tight text-white sm:text-5xl md:text-7xl">
             Waste Collection,{" "}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-200 to-white">
               Reimagined

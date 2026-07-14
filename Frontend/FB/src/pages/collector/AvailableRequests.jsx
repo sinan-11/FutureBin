@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FaBroadcastTower, FaWeight, FaMoneyBillWave,
@@ -13,8 +13,10 @@ import {
   acceptPickupService,
   rejectPickupService,
 } from "../../services/pickupService";
+import useSocket from "../../hooks/useSocket";
 import { ROUTES } from "../../utils/constants";
 import { getErrorMessage, formatDateTime, capitalize } from "../../utils/helpers";
+import { playNotificationSound } from "../../utils/sound";
 import { ListSkeleton } from "../../components/Skeleton";
 
 const POLL_INTERVAL = 10000;
@@ -158,6 +160,29 @@ const AvailableRequests = () => {
     pollRef.current = setInterval(loadAvailable, POLL_INTERVAL);
     return () => clearInterval(pollRef.current);
   }, []);
+
+  useSocket(
+    useCallback((data) => {
+      const request = data.request;
+      toast.info(
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-100">
+            <FaRecycle className="h-5 w-5 text-brand-600" />
+          </div>
+          <div>
+            <p className="font-semibold text-gray-800">New Pickup Available</p>
+            <p className="text-sm text-gray-500">{request.pickupAddress}</p>
+          </div>
+        </div>,
+        { autoClose: 8000 }
+      );
+      playNotificationSound();
+      setRequests((prev) => {
+        if (prev.some((r) => r._id === request._id)) return prev;
+        return [request, ...prev];
+      });
+    }, [])
+  );
 
   const handleReject = async (id) => {
     setRejecting(id);

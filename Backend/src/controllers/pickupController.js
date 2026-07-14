@@ -1,4 +1,10 @@
 import {
+  notifyCollectorsByIds,
+  notifyCollectorById,
+  notifyResidentById,
+  notifyPickupParticipants,
+} from "../config/socket.js";
+import {
   createPickupRequest,
   acceptPickupRequest,
   rejectPickupRequest,
@@ -82,6 +88,13 @@ export const createRequest = async (req, res) => {
       });
     }
 
+    if (scheduledAt && new Date(scheduledAt) <= new Date()) {
+      return res.status(400).json({
+        success: false,
+        message: "Scheduled time must be in the future",
+      });
+    }
+
     const result = await createPickupRequest(
       {
         wasteType,
@@ -94,6 +107,12 @@ export const createRequest = async (req, res) => {
       },
       req.user.id
     );
+
+    notifyCollectorsByIds(result.nearbyCollectors, "new-request", {
+      request: result.request,
+      nearbyCollectors: result.nearbyCollectors,
+    });
+    console.log(`[SOCKET] new-request broadcast to ${result.nearbyCollectors.length} nearby collector(s)`);
 
     res.status(201).json({
       success: true,
@@ -117,6 +136,16 @@ export const acceptRequest = async (req, res) => {
       req.params.id,
       req.user.id
     );
+
+    notifyPickupParticipants(request.resident, req.user.id, "pickup-accepted", {
+      request,
+    });
+    console.log(`[SOCKET] pickup-accepted sent to resident ${request.resident}`);
+
+    notifyCollectorById(req.user.id, "pickup-assigned", {
+      request,
+    });
+    console.log(`[SOCKET] pickup-assigned sent to collector ${req.user.id}`);
 
     res.status(200).json({
       success: true,
@@ -252,6 +281,14 @@ export const arriveRequest = async (req, res) => {
   try {
     const request = await arriveAtPickup(req.params.id, req.user.id);
 
+    notifyPickupParticipants(request.resident, req.user.id, "collector-arrived", {
+      request,
+    });
+    notifyCollectorById(req.user.id, "arrival-confirmed", {
+      request,
+    });
+    console.log(`[SOCKET] collector-arrived sent to resident ${request.resident}`);
+
     res.status(200).json({
       success: true,
       message: "Arrival confirmed",
@@ -284,6 +321,17 @@ export const verifyWeightHandler = async (req, res) => {
       Number(actualWeight)
     );
 
+    notifyResidentById(result.resident, "weight-verified", {
+      request: result,
+    });
+    notifyResidentById(result.resident, "otp-generated", {
+      request: result,
+    });
+    notifyCollectorById(req.user.id, "weight-saved", {
+      request: result,
+    });
+    console.log(`[SOCKET] weight-verified + otp-generated sent to resident ${result.resident}`);
+
     res.status(200).json({
       success: true,
       message: "Weight verified. OTP sent to resident.",
@@ -302,6 +350,11 @@ export const verifyWeightHandler = async (req, res) => {
 export const generateOtpHandler = async (req, res) => {
   try {
     const result = await generateCompletionOtp(req.params.id, req.user.id);
+
+    notifyResidentById(result.resident, "otp-regenerated", {
+      request: result,
+    });
+    console.log(`[SOCKET] otp-regenerated sent to resident ${result.resident}`);
 
     res.status(200).json({
       success: true,
@@ -340,6 +393,11 @@ export const regenerateOtpHandler = async (req, res) => {
   try {
     const result = await regenerateCompletionOtp(req.params.id, req.user.id);
 
+    notifyResidentById(req.user.id, "otp-regenerated", {
+      request: result,
+    });
+    console.log(`[SOCKET] otp-regenerated sent to resident ${req.user.id}`);
+
     res.status(200).json({
       success: true,
       message: "New OTP sent to your email",
@@ -372,6 +430,11 @@ export const verifyOtpHandler = async (req, res) => {
       otp
     );
 
+    notifyPickupParticipants(request.resident, req.user.id, "pickup-completed", {
+      request,
+    });
+    console.log(`[SOCKET] pickup-completed sent to resident ${request.resident} and collector ${req.user.id}`);
+
     res.status(200).json({
       success: true,
       message: "Pickup completed successfully",
@@ -394,6 +457,17 @@ export const cancelRequestHandler = async (req, res) => {
       req.params.id,
       req.user.id
     );
+
+    if (request.collector) {
+      notifyCollectorById(request.collector, "pickup-cancelled", {
+        request,
+      });
+      console.log(`[SOCKET] pickup-cancelled sent to collector ${request.collector}`);
+    }
+
+    notifyResidentById(req.user.id, "pickup-cancelled", {
+      request,
+    });
 
     res.status(200).json({
       success: true,

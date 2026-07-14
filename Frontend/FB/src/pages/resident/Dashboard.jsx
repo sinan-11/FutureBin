@@ -8,6 +8,7 @@ import {
 import { toast } from "react-toastify";
 
 import useAuth from "../../hooks/useAuth";
+import useSocket from "../../hooks/useSocket";
 import { getMyPickupsService, cancelPickupService, getPickupOtpService } from "../../services/pickupService";
 import { ROUTES } from "../../utils/constants";
 import { getErrorMessage, formatDateTime, capitalize } from "../../utils/helpers";
@@ -46,6 +47,7 @@ const ProgressBar = ({ currentStatus }) => {
 };
 
 const POLL_INTERVAL = 10000;
+const POLL_FALLBACK_DELAY = 5000;
 
 const OTPModal = ({ requestId, onClose }) => {
   const [otpData, setOtpData] = useState(null);
@@ -107,6 +109,7 @@ const Dashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const pollRef = useRef(null);
+  const pollTimeoutRef = useRef(null);
 
   const [requests, setRequests] = useState({ current: [], completed: [], cancelled: [] });
   const [cancelling, setCancelling] = useState(null);
@@ -116,24 +119,98 @@ const Dashboard = () => {
   const loadRequests = useCallback(async () => {
     try {
       const data = await getMyPickupsService();
-      setRequests((prev) => {
-        const prevActive = prev.current[0];
-        const newActive = data.current[0];
-        if (newActive && prevActive && prevActive._id === newActive._id) {
-          if (prevActive.status !== "weight_verified" && newActive.status === "weight_verified") {
-            setTimeout(() => setOtpModal(newActive._id), 500);
-          }
-        }
-        return data;
-      });
+      setRequests(data);
     } catch { /* silent */ }
   }, []);
 
+  const startPolling = useCallback(() => {
+    if (!pollRef.current) {
+      pollRef.current = setInterval(loadRequests, POLL_INTERVAL);
+    }
+  }, [loadRequests]);
+
+  const stopPolling = useCallback(() => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+    if (pollTimeoutRef.current) {
+      clearTimeout(pollTimeoutRef.current);
+      pollTimeoutRef.current = null;
+    }
+  }, []);
+
+  const { isConnected } = useSocket({
+    residentEvents: {
+      "pickup-accepted": useCallback((data) => {
+        toast.info("Collector accepted your pickup!");
+        loadRequests();
+      }, [loadRequests]),
+
+      "collector-arrived": useCallback((data) => {
+        toast.info("Collector has arrived!");
+        loadRequests();
+      }, [loadRequests]),
+
+      "otp-generated": useCallback((data) => {
+        toast.success("Weight verified! OTP sent to your email.");
+        loadRequests();
+        const reqId = data?.request?._id;
+        if (reqId) {
+          setTimeout(() => setOtpModal(reqId), 500);
+        }
+      }, [loadRequests]),
+
+      "weight-verified": useCallback((data) => {
+        toast.success("Weight verified!");
+        loadRequests();
+        const reqId = data?.request?._id;
+        if (reqId) {
+          setTimeout(() => setOtpModal(reqId), 500);
+        }
+      }, [loadRequests]),
+
+      "otp-regenerated": useCallback((data) => {
+        toast.info("New OTP sent to your email.");
+        loadRequests();
+      }, [loadRequests]),
+
+      "pickup-completed": useCallback((data) => {
+        toast.success("Pickup completed!");
+        loadRequests();
+      }, [loadRequests]),
+
+      "pickup-cancelled": useCallback((data) => {
+        toast.info("A pickup request was cancelled.");
+        loadRequests();
+      }, [loadRequests]),
+
+      "pickup-expired": useCallback((data) => {
+        toast.warning("Pickup request expired.");
+        loadRequests();
+      }, [loadRequests]),
+    },
+    onReconnect: useCallback(() => {
+      loadRequests();
+      stopPolling();
+    }, [loadRequests, stopPolling]),
+  });
+
   useEffect(() => {
     loadRequests();
-    pollRef.current = setInterval(loadRequests, POLL_INTERVAL);
-    return () => clearInterval(pollRef.current);
   }, [loadRequests]);
+
+  useEffect(() => {
+    if (isConnected) {
+      stopPolling();
+    } else {
+      pollTimeoutRef.current = setTimeout(() => {
+        startPolling();
+      }, POLL_FALLBACK_DELAY);
+    }
+
+    return () => stopPolling();
+  }, [isConnected, startPolling, stopPolling]);
 
   const handleCancel = async (id) => {
     setCancelling(id);
@@ -155,33 +232,33 @@ const Dashboard = () => {
       {/* ─── Top Bar ─── */}
       <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="mx-auto flex max-w-2xl items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-600 text-white font-bold text-sm">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-brand-600 text-white font-bold text-sm">
               {user?.name?.split(" ").map((n) => n[0]).join("").toUpperCase() || "R"}
             </div>
-            <div>
-              <p className="font-bold text-gray-800 text-sm leading-tight">{user?.name || "Resident"}</p>
+            <div className="min-w-0">
+              <p className="font-bold text-gray-800 text-sm leading-tight truncate">{user?.name || "Resident"}</p>
               <p className="text-xs text-gray-400">Resident</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <button
               onClick={() => navigate(ROUTES.HOME)}
-              className="flex h-8 w-8 items-center justify-center rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition"
+              className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition"
             >
               <FaHome className="h-4 w-4" />
             </button>
             <button
               onClick={() => setShowWallet(true)}
-              className="text-xs text-gray-500 hover:text-gray-700 font-medium"
+              className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition"
             >
               Wallet
             </button>
             <button
               onClick={() => navigate(ROUTES.RESIDENT_MY_REQUESTS)}
-              className="text-xs text-gray-500 hover:text-gray-700 font-medium"
+              className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition"
             >
-              My Requests
+              Requests
             </button>
           </div>
         </div>

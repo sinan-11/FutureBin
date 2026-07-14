@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaRecycle, FaWeight, FaMapMarkerAlt, FaCalendarAlt, FaTrashAlt, FaArrowLeft } from "react-icons/fa";
+import { FaRecycle, FaWeight, FaMapMarkerAlt, FaCalendarAlt, FaTrashAlt, FaArrowLeft, FaCheck } from "react-icons/fa";
 import { toast } from "react-toastify";
 
 import Button from "../../components/Button";
@@ -36,6 +36,11 @@ const CreateRequest = () => {
   const [locationLoading, setLocationLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  const now = new Date();
+  const minDateTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
+    .toISOString()
+    .slice(0, 16);
+
   const handleChange = (e) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
     setErrors((prev) => ({ ...prev, [e.target.name]: "" }));
@@ -67,6 +72,9 @@ const CreateRequest = () => {
     if (!form.estimatedWeight || Number(form.estimatedWeight) <= 0) errs.estimatedWeight = "Weight must be greater than 0";
     if (!form.pickupAddress.trim()) errs.pickupAddress = "Address is required";
     if (!form.coordinates) errs.coordinates = "Get your location first";
+    if (form.scheduledAt && new Date(form.scheduledAt) <= new Date()) {
+      errs.scheduledAt = "Scheduled time must be in the future";
+    }
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -93,110 +101,152 @@ const CreateRequest = () => {
     }
   };
 
+  const inputClass = (error) =>
+    `w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none transition-all duration-200 ${
+      error
+        ? "border-red-300 focus:border-red-400 focus:ring-2 focus:ring-red-100"
+        : "border-gray-200 focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
+    }`;
+
   return (
-    <div className="mx-auto max-w-xl animate-fade-in">
+    <div className="mx-auto max-w-xl animate-fade-in pt-2 sm:pt-4">
       <button
         onClick={() => navigate(ROUTES.RESIDENT_DASHBOARD)}
-        className="mb-4 flex items-center gap-1.5 text-sm font-medium text-gray-500 transition hover:text-gray-800"
+        className="group mb-6 flex items-center gap-2 text-sm font-medium text-gray-400 transition hover:text-gray-700"
       >
-        <FaArrowLeft className="h-3.5 w-3.5" />
-        Back to Dashboard
+        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gray-100 transition group-hover:bg-gray-200">
+          <FaArrowLeft className="h-3 w-3" />
+        </div>
+        Back
       </button>
 
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-800">Request a Pickup</h2>
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-gray-800 sm:text-3xl">Request a Pickup</h1>
         <p className="mt-1 text-sm text-gray-400">Fill in the details to schedule a waste collection.</p>
       </div>
 
-      <div className="rounded-2xl bg-white p-6 shadow-sm border border-gray-100">
-        <form onSubmit={handleSubmit} className="space-y-1">
-          <Select
-            label="Waste Type"
-            name="wasteType"
-            value={form.wasteType}
-            onChange={handleChange}
-            options={WASTE_TYPES}
-            placeholder="Select waste type"
-            error={errors.wasteType}
-          />
+      <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+        <div className="bg-gradient-to-r from-gray-50 to-white px-6 py-4 border-b border-gray-100">
+          <h2 className="text-sm font-semibold tracking-wide text-gray-500 uppercase">Pickup Details</h2>
+        </div>
 
-          <Input
-            label="Estimated Weight (kg)"
-            name="estimatedWeight"
-            type="number"
-            step="0.1"
-            min="0.1"
-            placeholder="e.g. 5"
-            value={form.estimatedWeight}
-            onChange={handleChange}
-            icon={FaWeight}
-            error={errors.estimatedWeight}
-          />
+        <form onSubmit={handleSubmit} className="px-6 py-5 space-y-5">
+          <div className="grid gap-5 sm:grid-cols-2">
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">Waste Type</label>
+              <select
+                name="wasteType"
+                value={form.wasteType}
+                onChange={handleChange}
+                className={inputClass(errors.wasteType)}
+              >
+                <option value="" disabled>Select waste type</option>
+                {WASTE_TYPES.map((t) => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
+              </select>
+              {errors.wasteType && <p className="mt-1 text-xs text-red-500">{errors.wasteType}</p>}
+            </div>
 
-          <Input
-            label="Pickup Address"
-            name="pickupAddress"
-            placeholder="Full address for pickup"
-            value={form.pickupAddress}
-            onChange={handleChange}
-            icon={FaMapMarkerAlt}
-            error={errors.pickupAddress}
-          />
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">Est. Weight (kg)</label>
+              <input
+                type="number"
+                name="estimatedWeight"
+                step="0.1"
+                min="0.1"
+                placeholder="e.g. 5"
+                value={form.estimatedWeight}
+                onChange={handleChange}
+                className={inputClass(errors.estimatedWeight)}
+              />
+              {errors.estimatedWeight && <p className="mt-1 text-xs text-red-500">{errors.estimatedWeight}</p>}
+            </div>
+          </div>
 
-          <Input
-            label="Scheduled Date & Time (optional)"
-            name="scheduledAt"
-            type="datetime-local"
-            value={form.scheduledAt}
-            onChange={handleChange}
-            icon={FaCalendarAlt}
-          />
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-gray-700">Pickup Address</label>
+            <input
+              type="text"
+              name="pickupAddress"
+              placeholder="Full address for pickup"
+              value={form.pickupAddress}
+              onChange={handleChange}
+              className={inputClass(errors.pickupAddress)}
+            />
+            {errors.pickupAddress && <p className="mt-1 text-xs text-red-500">{errors.pickupAddress}</p>}
+          </div>
 
-          <div className="mb-4">
-            <label className="mb-2 block font-medium text-gray-700 text-sm">Pickup Location</label>
-            <div className="flex items-center gap-3">
+          <div className="grid gap-5 sm:grid-cols-2">
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">Scheduled Date & Time</label>
+              <p className="mb-1.5 text-xs text-gray-400">Optional — leave blank for ASAP</p>
+              <input
+                type="datetime-local"
+                name="scheduledAt"
+                value={form.scheduledAt}
+                onChange={handleChange}
+                min={minDateTime}
+                className={inputClass(errors.scheduledAt)}
+              />
+              {errors.scheduledAt && <p className="mt-1 text-xs text-red-500">{errors.scheduledAt}</p>}
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">Pickup Location</label>
+              <p className="mb-1.5 text-xs text-gray-400">Enable GPS to auto-detect</p>
               <button
                 type="button"
                 onClick={handleGetLocation}
                 disabled={locationLoading}
-                className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition ${
+                className={`flex w-full items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-semibold transition active:scale-[0.97] ${
                   form.coordinates
-                    ? "bg-green-50 text-green-700 border border-green-200"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200"
+                    ? "border-green-200 bg-green-50 text-green-700"
+                    : "border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100"
                 }`}
               >
-                <FaMapMarkerAlt className={locationLoading ? "animate-pulse" : ""} />
-                {locationLoading ? "Getting..." : form.coordinates ? "Location Set" : "Get Current Location"}
+                {locationLoading ? (
+                  <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                ) : form.coordinates ? (
+                  <FaCheck className="h-4 w-4" />
+                ) : (
+                  <FaMapMarkerAlt className="h-4 w-4" />
+                )}
+                {locationLoading ? "Detecting..." : form.coordinates ? "Location Set" : "Get Current Location"}
               </button>
-              {form.coordinates && (
-                <span className="text-xs text-gray-400">
-                  {form.coordinates[1].toFixed(4)}, {form.coordinates[0].toFixed(4)}
-                </span>
-              )}
+              {errors.coordinates && <p className="mt-1 text-xs text-red-500">{errors.coordinates}</p>}
             </div>
-            {errors.coordinates && <p className="mt-1 text-sm text-red-500">{errors.coordinates}</p>}
           </div>
 
-          <div className="mb-4">
-            <label htmlFor="description" className="mb-2 block text-sm font-medium text-gray-700">
-              Description (optional)
-            </label>
+          <div>
+            <label htmlFor="description" className="mb-1.5 block text-sm font-medium text-gray-700">Description</label>
+            <p className="mb-1.5 text-xs text-gray-400">Optional — special instructions for the collector</p>
             <textarea
               id="description"
               name="description"
               rows={3}
-              placeholder="Any special instructions for the collector..."
+              placeholder="e.g. Leave bins at the gate, door code is #1234..."
               value={form.description}
               onChange={handleChange}
-              className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm outline-none transition focus:border-brand-400 focus:bg-white focus:ring-2 focus:ring-brand-100"
+              className={inputClass()}
             />
           </div>
 
-          <div className="flex items-center gap-3 pt-2">
+          <div className="flex flex-col-reverse gap-3 pt-4 sm:flex-row">
+            <button
+              type="button"
+              onClick={() => navigate(ROUTES.RESIDENT_DASHBOARD)}
+              className="rounded-xl border border-gray-200 px-6 py-3 text-sm font-semibold text-gray-500 transition hover:bg-gray-50 active:scale-[0.97]"
+            >
+              Cancel
+            </button>
             <button
               type="submit"
               disabled={submitting}
-              className="flex items-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-brand-700 active:scale-[0.97] disabled:opacity-50"
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-brand-200 transition hover:from-brand-700 hover:to-brand-600 hover:shadow-md hover:shadow-brand-300 active:scale-[0.97] disabled:opacity-50"
             >
               {submitting ? (
                 <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24">
@@ -207,13 +257,6 @@ const CreateRequest = () => {
                 <FaTrashAlt className="h-4 w-4" />
               )}
               {submitting ? "Submitting..." : "Submit Request"}
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate(ROUTES.RESIDENT_DASHBOARD)}
-              className="rounded-xl px-4 py-3 text-sm font-medium text-gray-500 transition hover:bg-gray-100"
-            >
-              Cancel
             </button>
           </div>
         </form>

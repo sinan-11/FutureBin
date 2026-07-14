@@ -33,7 +33,7 @@ const CollectorLayout = ({ children, userName }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 pb-20 md:pb-0">
       <header className="sticky top-0 z-30 border-b border-gray-100 bg-white/80 shadow-sm backdrop-blur-xl">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
@@ -83,6 +83,25 @@ const CollectorLayout = ({ children, userName }) => {
         </nav>
         <main className="flex-1 min-w-0">{children}</main>
       </div>
+
+      <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-gray-100 bg-white md:hidden">
+        <div className="mx-auto flex max-w-lg items-center justify-around px-2 py-1">
+          {navItems.map((item) => (
+            <button
+              key={item.path}
+              onClick={() => navigate(item.path)}
+              className={`flex flex-col items-center gap-0.5 px-3 py-2 text-xs font-medium transition-all ${
+                location.pathname === item.path
+                  ? "text-brand-600"
+                  : "text-gray-400 hover:text-gray-600"
+              }`}
+            >
+              <item.icon className="h-5 w-5" />
+              {item.label}
+            </button>
+          ))}
+        </div>
+      </nav>
     </div>
   );
 };

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FaTruck, FaCheckCircle, FaHourglass, FaWeight,
@@ -7,17 +7,20 @@ import {
 } from "react-icons/fa";
 import { toast } from "react-toastify";
 
+import useSocket from "../../hooks/useSocket";
 import {
   getAssignedPickupsService,
   updatePickupStatusService,
   arriveAtPickupService,
   verifyWeightService,
   generateOtpService,
+  regenerateOtpService,
   verifyOtpService,
 } from "../../services/pickupService";
 import { ROUTES } from "../../utils/constants";
 import { getErrorMessage, formatDateTime, capitalize } from "../../utils/helpers";
 import { ListSkeleton } from "../../components/Skeleton";
+import OtpInput from "../../components/OtpInput";
 
 const STATUS_BADGES = {
   accepted: { label: "Accepted", color: "bg-indigo-50 text-indigo-700 ring-indigo-200" },
@@ -149,21 +152,12 @@ const PickupCard = ({
             />
           )}
           {request.status === "weight_verified" && (
-            <>
-              <ActionButton
-                onClick={() => onVerifyOtp(request._id)}
-                label="Enter OTP"
-                icon={<FaClipboardCheck className="h-3.5 w-3.5" />}
-                color="bg-brand-600 hover:bg-brand-700"
-              />
-              <ActionButton
-                onClick={() => onGenerateOtp(request._id)}
-                loading={loading === `otp-${request._id}`}
-                label="Generate OTP"
-                icon={<FaKey className="h-3.5 w-3.5" />}
-                color="bg-amber-600 hover:bg-amber-700"
-              />
-            </>
+            <ActionButton
+              onClick={() => onVerifyOtp(request._id)}
+              label="Enter OTP"
+              icon={<FaClipboardCheck className="h-3.5 w-3.5" />}
+              color="bg-brand-600 hover:bg-brand-700"
+            />
           )}
           {isFinal && (
             <span className="inline-flex items-center gap-1.5 rounded-xl bg-green-50 px-4 py-2.5 text-sm font-bold text-green-700">
@@ -217,8 +211,13 @@ const Section = ({ title, count, icon: Icon, children }) => (
   </div>
 );
 
+const POLL_INTERVAL = 10000;
+const POLL_FALLBACK_DELAY = 5000;
+
 const MyPickups = () => {
   const navigate = useNavigate();
+  const pollRef = useRef(null);
+  const pollTimeoutRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [pickups, setPickups] = useState({ active: [], completed: [] });
   const [actionLoading, setActionLoading] = useState(null);
@@ -227,7 +226,7 @@ const MyPickups = () => {
   const [weightInput, setWeightInput] = useState("");
   const [otpInput, setOtpInput] = useState("");
 
-  const loadPickups = async () => {
+  const loadPickups = useCallback(async () => {
     try {
       const data = await getAssignedPickupsService();
       setPickups(data);
@@ -236,9 +235,75 @@ const MyPickups = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  useEffect(() => { loadPickups(); }, []);
+  const startPolling = useCallback(() => {
+    if (!pollRef.current) {
+      pollRef.current = setInterval(loadPickups, POLL_INTERVAL);
+    }
+  }, [loadPickups]);
+
+  const stopPolling = useCallback(() => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+    if (pollTimeoutRef.current) {
+      clearTimeout(pollTimeoutRef.current);
+      pollTimeoutRef.current = null;
+    }
+  }, []);
+
+  const { isConnected } = useSocket({
+    collectorEvents: {
+      "pickup-cancelled": useCallback((data) => {
+        toast.info("A resident cancelled a pickup");
+        loadPickups();
+      }, [loadPickups]),
+
+      "pickup-completed": useCallback((data) => {
+        toast.success("Pickup completed!");
+        loadPickups();
+      }, [loadPickups]),
+
+      "pickup-assigned": useCallback((data) => {
+        toast.success("You have a new assigned pickup!");
+        loadPickups();
+      }, [loadPickups]),
+
+      "arrival-confirmed": useCallback((data) => {
+        loadPickups();
+      }, [loadPickups]),
+
+      "weight-saved": useCallback((data) => {
+        loadPickups();
+      }, [loadPickups]),
+
+      "pickup-expired": useCallback((data) => {
+        loadPickups();
+      }, [loadPickups]),
+    },
+    onReconnect: useCallback(() => {
+      loadPickups();
+      stopPolling();
+    }, [loadPickups, stopPolling]),
+  });
+
+  useEffect(() => {
+    loadPickups();
+  }, [loadPickups]);
+
+  useEffect(() => {
+    if (isConnected) {
+      stopPolling();
+    } else {
+      pollTimeoutRef.current = setTimeout(() => {
+        startPolling();
+      }, POLL_FALLBACK_DELAY);
+    }
+
+    return () => stopPolling();
+  }, [isConnected, startPolling, stopPolling]);
 
   const handleArrive = async (id) => {
     setActionLoading(`arrive-${id}`);
@@ -282,6 +347,19 @@ const MyPickups = () => {
     setActionLoading(`otp-${id}`);
     try {
       await generateOtpService(id);
+      toast.success("New OTP generated and sent to resident");
+      loadPickups();
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleRegenerateOtp = async (id) => {
+    setActionLoading(`otp-${id}`);
+    try {
+      await regenerateOtpService(id);
       toast.success("New OTP generated and sent to resident");
       loadPickups();
     } catch (error) {
@@ -408,17 +486,27 @@ const MyPickups = () => {
           <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl animate-fade-in">
             <h3 className="text-lg font-bold text-gray-800 mb-1">Enter OTP</h3>
             <p className="text-sm text-gray-400 mb-4">Ask the resident for the 6-digit OTP to complete the pickup.</p>
-            <input
-              type="text"
-              inputMode="numeric"
-              maxLength={6}
-              value={otpInput}
-              onChange={(e) => setOtpInput(e.target.value.replace(/\D/g, "").slice(0, 6))}
-              placeholder="000000"
-              className="w-full rounded-xl border border-gray-200 px-4 py-3 text-center text-2xl font-bold tracking-[0.5em] text-gray-800 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-              autoFocus
-            />
+            <OtpInput value={otpInput} onChange={setOtpInput} />
             <div className="mt-4 flex gap-3">
+              <button
+                onClick={() => handleRegenerateOtp(otpModal)}
+                disabled={actionLoading === `otp-${otpModal}`}
+                className="flex items-center justify-center gap-1.5 w-full rounded-xl bg-amber-500 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-amber-600 active:scale-95 disabled:bg-gray-300 disabled:cursor-not-allowed"
+              >
+                {actionLoading === `otp-${otpModal}` ? (
+                  <span className="flex items-center gap-1.5">
+                    <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    Generating...
+                  </span>
+                ) : (
+                  <><FaKey className="h-3.5 w-3.5" /> Regenerate OTP</>
+                )}
+              </button>
+            </div>
+            <div className="mt-3 flex gap-3">
               <button
                 onClick={() => setOtpModal(null)}
                 className="flex-1 rounded-xl bg-gray-100 py-3 text-sm font-semibold text-gray-600 transition hover:bg-gray-200"

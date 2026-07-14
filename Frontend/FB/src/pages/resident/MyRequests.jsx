@@ -1,38 +1,25 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  FaRecycle, FaPlus, FaCheckCircle, FaTimesCircle,
-  FaHourglass, FaTruck, FaMapMarkerAlt, FaWeight,
-  FaMoneyBillWave, FaArrowLeft, FaKey,
+  FaPlus, FaCheckCircle, FaTimesCircle,
+  FaHourglass, FaTruck, FaWeight,
+  FaMoneyBillWave, FaKey, FaCalendarAlt, FaArrowLeft, FaRecycle,
 } from "react-icons/fa";
 import { toast } from "react-toastify";
 
+import useSocket from "../../hooks/useSocket";
 import { getMyPickupsService, cancelPickupService, getPickupOtpService } from "../../services/pickupService";
 import { ROUTES } from "../../utils/constants";
 import { getErrorMessage, formatDateTime, capitalize } from "../../utils/helpers";
-import { ListSkeleton } from "../../components/Skeleton";
 
-const STATUS_BADGES = {
-  broadcasting: { label: "Finding Collector", color: "bg-blue-50 text-blue-700 ring-blue-200" },
-  accepted: { label: "Accepted", color: "bg-indigo-50 text-indigo-700 ring-indigo-200" },
-  collector_arrived: { label: "Collector Arrived", color: "bg-purple-50 text-purple-700 ring-purple-200" },
-  weight_verified: { label: "Weight Verified", color: "bg-orange-50 text-orange-700 ring-orange-200" },
-  completed: { label: "Completed", color: "bg-green-50 text-green-700 ring-green-200" },
-  cancelled: { label: "Cancelled", color: "bg-red-50 text-red-700 ring-red-200" },
-  expired: { label: "Expired", color: "bg-gray-50 text-gray-600 ring-gray-200" },
-};
-
-const StatusDot = ({ status }) => {
-  const colors = {
-    broadcasting: "bg-blue-500",
-    accepted: "bg-indigo-500",
-    collector_arrived: "bg-purple-500",
-    weight_verified: "bg-orange-500",
-    completed: "bg-green-500",
-    cancelled: "bg-red-500",
-    expired: "bg-gray-400",
-  };
-  return <span className={`inline-block h-2 w-2 rounded-full ${colors[status] || "bg-gray-300"}`} />;
+const STATUS_CONFIG = {
+  broadcasting: { label: "Finding Collector", dot: "bg-blue-500" },
+  accepted: { label: "Accepted", dot: "bg-indigo-500" },
+  collector_arrived: { label: "Collector Arrived", dot: "bg-purple-500" },
+  weight_verified: { label: "Weight Verified", dot: "bg-orange-500" },
+  completed: { label: "Completed", dot: "bg-green-500" },
+  cancelled: { label: "Cancelled", dot: "bg-red-500" },
+  expired: { label: "Expired", dot: "bg-gray-400" },
 };
 
 const OTPModal = ({ requestId, onClose }) => {
@@ -52,17 +39,16 @@ const OTPModal = ({ requestId, onClose }) => {
     }
   }, [requestId]);
 
-  useEffect(() => {
-    fetchOtp();
-  }, [fetchOtp]);
+  useEffect(() => { fetchOtp(); }, [fetchOtp]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-      <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl animate-fade-in text-center">
-        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-brand-50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 backdrop-blur-sm">
+      <div className="w-full max-w-sm animate-fade-in rounded-2xl bg-white p-6 text-center shadow-2xl">
+        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-brand-50 to-brand-100">
           <FaKey className="h-6 w-6 text-brand-600" />
         </div>
-        <h3 className="text-lg font-bold text-gray-800 mb-2">OTP Verification</h3>
+        <h3 className="mb-1 text-lg font-bold text-gray-800">OTP Verification</h3>
+        <p className="mb-4 text-sm text-gray-400">Share this code with your collector to complete the pickup.</p>
         {loading ? (
           <div className="flex justify-center py-4">
             <svg className="h-6 w-6 animate-spin text-brand-600" viewBox="0 0 24 24">
@@ -71,19 +57,13 @@ const OTPModal = ({ requestId, onClose }) => {
             </svg>
           </div>
         ) : otpData?.otp ? (
-          <>
-            <p className="text-sm text-gray-400 mb-3">Share this OTP with your collector to complete the pickup.</p>
-            <div className="mx-auto mb-4 inline-block rounded-xl bg-gray-50 px-6 py-3">
-              <span className="text-3xl font-bold tracking-[0.3em] text-gray-800">{otpData.otp}</span>
-            </div>
-          </>
+          <div className="mx-auto inline-block rounded-2xl bg-gradient-to-br from-gray-50 to-gray-100 px-8 py-4 shadow-inner">
+            <span className="text-4xl font-bold tracking-[0.35em] text-gray-800">{otpData.otp}</span>
+          </div>
         ) : (
-          <p className="text-sm text-gray-500 py-4">Could not retrieve OTP. Please ask your collector to generate a new one.</p>
+          <p className="py-4 text-sm text-gray-400">Could not retrieve OTP. Ask your collector to generate a new one.</p>
         )}
-        <button
-          onClick={onClose}
-          className="mt-2 w-full rounded-xl bg-gray-100 py-3 text-sm font-semibold text-gray-600 transition hover:bg-gray-200"
-        >
+        <button onClick={onClose} className="mt-5 w-full rounded-xl bg-gray-100 py-3 text-sm font-semibold text-gray-600 transition hover:bg-gray-200 active:scale-[0.97]">
           Close
         </button>
       </div>
@@ -91,86 +71,107 @@ const OTPModal = ({ requestId, onClose }) => {
   );
 };
 
+const InfoRow = ({ icon: Icon, label, value, highlight }) => (
+  <div className="flex items-center gap-3">
+    <div className={`flex h-6 w-6 items-center justify-center rounded-lg ${highlight ? "bg-brand-50" : "bg-gray-50"}`}>
+      <Icon className={`h-3 w-3 ${highlight ? "text-brand-500" : "text-gray-400"}`} />
+    </div>
+    <span className="text-sm text-gray-400">{label}</span>
+    <span className={`ml-auto text-sm font-semibold ${highlight ? "text-brand-600" : "text-gray-800"}`}>{value}</span>
+  </div>
+);
+
 const RequestCard = ({ request, onCancel, cancelling }) => {
-  const badge = STATUS_BADGES[request.status] || { label: request.status, color: "bg-gray-50 text-gray-600 ring-gray-200" };
+  const config = STATUS_CONFIG[request.status] || { label: request.status, dot: "bg-gray-300" };
   const canCancel = request.status === "broadcasting" || request.status === "accepted";
   const [showOtp, setShowOtp] = useState(false);
 
   return (
-    <div className="group rounded-2xl bg-white border border-gray-100 p-4 shadow-sm transition-all hover:shadow-md hover:border-gray-200">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-2">
-            <StatusDot status={request.status} />
-            <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ${badge.color}`}>
-              {badge.label}
-            </span>
-            {request.status === "weight_verified" && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700 ring-1 ring-amber-200">
-                <FaKey className="h-3 w-3" />
-                Waiting for OTP
-              </span>
-            )}
-            <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600">
-              <FaRecycle className="h-3 w-3" />
-              {capitalize(request.wasteType)}
-            </span>
+    <div className="group overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition-all duration-200 hover:border-gray-200 hover:shadow-lg">
+      <div className="flex items-center justify-between bg-gradient-to-r from-gray-50 to-white px-5 py-3.5">
+        <div className="flex items-center gap-3">
+          <span className={`relative flex h-2.5 w-2.5 items-center justify-center ${config.dot.replace("bg-", "bg-")}`}>
+            <span className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-75 ${config.dot}`} />
+            <span className={`relative inline-flex h-2.5 w-2.5 rounded-full ${config.dot}`} />
+          </span>
+          <span className="text-sm font-semibold text-gray-700">{config.label}</span>
+          <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-500">
+            <FaRecycle className="h-3 w-3" />
+            {capitalize(request.wasteType)}
+          </span>
+        </div>
+        {request.status === "weight_verified" && (
+          <button
+            onClick={() => setShowOtp(true)}
+            className="flex items-center gap-1.5 rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 ring-1 ring-amber-200 transition hover:bg-amber-100 active:scale-95"
+          >
+            <FaKey className="h-3 w-3" /> View OTP
+          </button>
+        )}
+      </div>
+
+      <div className="space-y-4 px-5 py-4">
+        <div className="flex items-start gap-3">
+          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-brand-50">
+            <FaCalendarAlt className="h-3.5 w-3.5 text-brand-500" />
           </div>
-
-          <h4 className="font-semibold text-gray-800 truncate">{request.pickupAddress}</h4>
-
-          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-500">
-            <span className="flex items-center gap-1"><FaWeight className="h-3.5 w-3.5 text-gray-400" />Est: {request.estimatedWeight} kg</span>
-            {request.actualWeight && (
-              <span className="flex items-center gap-1"><FaWeight className="h-3.5 w-3.5 text-brand-500" />Actual: <span className="font-medium text-brand-600">{request.actualWeight} kg</span></span>
-            )}
-            <span className="flex items-center gap-1"><FaMoneyBillWave className="h-3.5 w-3.5 text-gray-400" />Est: ₹{request.estimatedPrice}</span>
-            {request.finalAmount && (
-              <span className="flex items-center gap-1"><FaMoneyBillWave className="h-3.5 w-3.5 text-brand-500" />Final: <span className="font-medium text-brand-600">₹{request.finalAmount}</span></span>
-            )}
-            {request.scheduledAt && (
-              <span className="flex items-center gap-1"><FaMapMarkerAlt className="h-3.5 w-3.5" />{formatDateTime(request.scheduledAt)}</span>
-            )}
-          </div>
-
-          {request.collector && (
-            <div className="mt-3 flex items-center gap-2 rounded-lg bg-brand-50 p-2 text-sm">
-              <FaTruck className="h-4 w-4 text-brand-600" />
-              <span className="font-medium text-brand-700">{request.collector.name}</span>
-              {request.collector.collectorDetails?.phone && (
-                <span className="text-brand-500">· {request.collector.collectorDetails.phone}</span>
-              )}
-            </div>
-          )}
-
-          {request.description && (
-            <p className="mt-2 text-sm text-gray-400 italic">{request.description}</p>
-          )}
-
-          <div className="mt-2 text-xs text-gray-400">
-            Created {formatDateTime(request.createdAt)}
-            {request.acceptedAt && <> · Accepted {formatDateTime(request.acceptedAt)}</>}
-            {request.arrivedAt && <> · Arrived {formatDateTime(request.arrivedAt)}</>}
-            {request.completedAt && <> · Completed {formatDateTime(request.completedAt)}</>}
+          <div className="min-w-0">
+            <p className="text-sm text-gray-400">Pickup Address</p>
+            <p className="text-sm font-semibold text-gray-800 leading-snug">{request.pickupAddress}</p>
           </div>
         </div>
 
-        <div className="flex flex-col gap-2 flex-shrink-0">
-          {request.status === "weight_verified" && (
-            <button
-              onClick={() => setShowOtp(true)}
-              className="rounded-xl bg-amber-50 px-4 py-2.5 text-sm font-bold text-amber-700 border border-amber-200 transition hover:bg-amber-100 active:scale-95"
-            >
-              <span className="flex items-center gap-1.5"><FaKey className="h-3.5 w-3.5" /> View OTP</span>
-            </button>
-          )}
+        <div className="rounded-xl bg-gray-50/80 p-4">
+          <div className="space-y-2.5">
+            <InfoRow icon={FaWeight} label="Estimated Weight" value={`${request.estimatedWeight} kg`} />
+            {request.actualWeight && (
+              <InfoRow icon={FaWeight} label="Actual Weight" value={`${request.actualWeight} kg`} highlight />
+            )}
+            <InfoRow icon={FaMoneyBillWave} label="Estimated Price" value={`₹${request.estimatedPrice}`} />
+            {request.finalAmount && (
+              <InfoRow icon={FaMoneyBillWave} label="Final Amount" value={`₹${request.finalAmount}`} highlight />
+            )}
+            {request.scheduledAt && (
+              <InfoRow icon={FaCalendarAlt} label="Scheduled For" value={formatDateTime(request.scheduledAt)} />
+            )}
+          </div>
+        </div>
+
+        {request.collector && (
+          <div className="flex items-center gap-3 rounded-xl border border-brand-100 bg-gradient-to-r from-brand-50/50 to-white px-4 py-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-100">
+              <FaTruck className="h-4 w-4 text-brand-600" />
+            </div>
+            <div>
+              <p className="text-xs text-brand-500">Assigned Collector</p>
+              <p className="text-sm font-semibold text-brand-700">
+                {request.collector.name}
+                {request.collector.collectorDetails?.phone && (
+                  <span className="font-normal text-brand-400"> · {request.collector.collectorDetails.phone}</span>
+                )}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {request.description && (
+          <div className="border-l-2 border-gray-200 pl-3">
+            <p className="text-sm italic text-gray-400 leading-relaxed">{request.description}</p>
+          </div>
+        )}
+
+        <div className="flex items-center justify-between border-t border-gray-100 pt-3">
+          <p className="text-xs text-gray-300">
+            {formatDateTime(request.createdAt)}
+            {request.completedAt && <> · {formatDateTime(request.completedAt)}</>}
+          </p>
           {canCancel && (
             <button
               onClick={() => onCancel(request._id)}
               disabled={cancelling}
-              className="rounded-xl px-3 py-2 text-xs font-semibold text-red-500 border border-red-200 transition hover:bg-red-50 active:scale-95 disabled:opacity-50"
+              className="rounded-lg px-3 py-1.5 text-xs font-semibold text-red-400 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50 active:scale-95"
             >
-              {cancelling ? "..." : "Cancel"}
+              {cancelling ? "Cancelling..." : "Cancel Request"}
             </button>
           )}
         </div>
@@ -181,33 +182,17 @@ const RequestCard = ({ request, onCancel, cancelling }) => {
   );
 };
 
-const Section = ({ title, count, icon: Icon, children }) => (
-  <div>
-    <div className="mb-3 flex items-center gap-2">
-      <Icon className="h-5 w-5 text-gray-400" />
-      <h3 className="text-lg font-bold text-gray-800">{title}</h3>
-      {count > 0 && (
-        <span className="inline-flex items-center justify-center min-w-[1.5rem] h-6 rounded-full bg-gray-100 px-2 text-xs font-bold text-gray-600">
-          {count}
-        </span>
-      )}
-    </div>
-    {count > 0 ? (
-      <div className="space-y-3">{children}</div>
-    ) : (
-      <p className="py-6 text-center text-sm text-gray-400">No {title.toLowerCase()}.</p>
-    )}
-  </div>
-);
-
 const POLL_INTERVAL = 10000;
+const POLL_FALLBACK_DELAY = 5000;
 
 const MyRequests = () => {
   const navigate = useNavigate();
   const pollRef = useRef(null);
+  const pollTimeoutRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [requests, setRequests] = useState({ current: [], completed: [], cancelled: [] });
   const [cancelling, setCancelling] = useState(null);
+  const [otpModal, setOtpModal] = useState(null);
 
   const loadRequests = useCallback(async () => {
     try {
@@ -220,11 +205,94 @@ const MyRequests = () => {
     }
   }, []);
 
+  const startPolling = useCallback(() => {
+    if (!pollRef.current) {
+      pollRef.current = setInterval(loadRequests, POLL_INTERVAL);
+    }
+  }, [loadRequests]);
+
+  const stopPolling = useCallback(() => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+    if (pollTimeoutRef.current) {
+      clearTimeout(pollTimeoutRef.current);
+      pollTimeoutRef.current = null;
+    }
+  }, []);
+
+  const { isConnected } = useSocket({
+    residentEvents: {
+      "pickup-accepted": useCallback((data) => {
+        toast.info("Collector accepted your pickup!");
+        loadRequests();
+      }, [loadRequests]),
+
+      "collector-arrived": useCallback((data) => {
+        toast.info("Collector has arrived!");
+        loadRequests();
+      }, [loadRequests]),
+
+      "otp-generated": useCallback((data) => {
+        toast.success("Weight verified! OTP sent to your email.");
+        loadRequests();
+        const reqId = data?.request?._id;
+        if (reqId) {
+          setTimeout(() => setOtpModal(reqId), 500);
+        }
+      }, [loadRequests]),
+
+      "weight-verified": useCallback((data) => {
+        toast.success("Weight verified!");
+        loadRequests();
+        const reqId = data?.request?._id;
+        if (reqId) {
+          setTimeout(() => setOtpModal(reqId), 500);
+        }
+      }, [loadRequests]),
+
+      "otp-regenerated": useCallback((data) => {
+        toast.info("New OTP sent to your email.");
+        loadRequests();
+      }, [loadRequests]),
+
+      "pickup-completed": useCallback((data) => {
+        toast.success("Pickup completed!");
+        loadRequests();
+      }, [loadRequests]),
+
+      "pickup-cancelled": useCallback((data) => {
+        toast.info("A pickup request was cancelled.");
+        loadRequests();
+      }, [loadRequests]),
+
+      "pickup-expired": useCallback((data) => {
+        toast.warning("Pickup request expired.");
+        loadRequests();
+      }, [loadRequests]),
+    },
+    onReconnect: useCallback(() => {
+      loadRequests();
+      stopPolling();
+    }, [loadRequests, stopPolling]),
+  });
+
   useEffect(() => {
     loadRequests();
-    pollRef.current = setInterval(loadRequests, POLL_INTERVAL);
-    return () => clearInterval(pollRef.current);
   }, [loadRequests]);
+
+  useEffect(() => {
+    if (isConnected) {
+      stopPolling();
+    } else {
+      pollTimeoutRef.current = setTimeout(() => {
+        startPolling();
+      }, POLL_FALLBACK_DELAY);
+    }
+
+    return () => stopPolling();
+  }, [isConnected, startPolling, stopPolling]);
 
   const handleCancel = async (id) => {
     setCancelling(id);
@@ -239,51 +307,91 @@ const MyRequests = () => {
     }
   };
 
-  if (loading) return <div className="animate-fade-in"><ListSkeleton count={4} /></div>;
-
   return (
-    <div className="mx-auto max-w-2xl animate-fade-in">
+    <div className="mx-auto max-w-2xl animate-fade-in pt-2 sm:pt-4">
       <button
         onClick={() => navigate(ROUTES.RESIDENT_DASHBOARD)}
-        className="mb-4 flex items-center gap-1.5 text-sm font-medium text-gray-500 transition hover:text-gray-800"
+        className="group mb-6 flex items-center gap-2 text-sm font-medium text-gray-400 transition hover:text-gray-700"
       >
-        <FaArrowLeft className="h-3.5 w-3.5" />
+        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gray-100 transition group-hover:bg-gray-200">
+          <FaArrowLeft className="h-3 w-3" />
+        </div>
         Back
       </button>
 
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-8 flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800">My Requests</h2>
-          <p className="text-sm text-gray-400">Track all your waste pickup requests.</p>
+          <h1 className="text-2xl font-bold text-gray-800 sm:text-3xl">My Requests</h1>
+          <p className="mt-1 text-sm text-gray-400">
+            {requests.current.length > 0
+              ? `${requests.current.length} active request${requests.current.length > 1 ? "s" : ""}`
+              : "No active requests"}
+          </p>
         </div>
         <button
           onClick={() => navigate(ROUTES.RESIDENT_CREATE_REQUEST)}
-          className="flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-brand-700 active:scale-95"
+          className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 px-5 py-2.5 text-sm font-semibold text-white shadow-sm shadow-brand-200 transition hover:from-brand-700 hover:to-brand-600 hover:shadow-md hover:shadow-brand-300 active:scale-95"
         >
           <FaPlus className="h-3.5 w-3.5" />
-          New
+          New Request
         </button>
       </div>
 
-      <div className="space-y-8">
-        <Section title="Current" count={requests.current.length} icon={FaHourglass}>
-          {requests.current.map((req) => (
-            <RequestCard key={req._id} request={req} onCancel={handleCancel} cancelling={cancelling === req._id} />
+      {loading ? (
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-48 animate-pulse rounded-2xl bg-gradient-to-br from-gray-100 to-gray-50" />
           ))}
-        </Section>
+        </div>
+      ) : (
+        <div className="space-y-8">
+          {[
+            { key: "current", title: "Active", icon: FaHourglass, empty: "No active pickup requests" },
+            { key: "completed", title: "Completed", icon: FaCheckCircle, empty: "No completed pickups yet" },
+            { key: "cancelled", title: "Cancelled", icon: FaTimesCircle, empty: "No cancelled requests" },
+          ].map(({ key, title, icon: Icon, empty }) => {
+            const items = requests[key];
+            if (items.length === 0 && key !== "current") return null;
+            return (
+              <section key={key}>
+                <div className="mb-4 flex items-center gap-3">
+                  <div className={`flex h-7 w-7 items-center justify-center rounded-lg ${
+                    key === "current" ? "bg-blue-50 text-blue-600" :
+                    key === "completed" ? "bg-green-50 text-green-600" :
+                    "bg-red-50 text-red-500"
+                  }`}>
+                    <Icon className="h-3.5 w-3.5" />
+                  </div>
+                  <h2 className="text-sm font-semibold tracking-wide text-gray-500 uppercase">{title}</h2>
+                  {items.length > 0 && (
+                    <span className={`ml-auto rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                      key === "current" ? "bg-blue-50 text-blue-600" :
+                      key === "completed" ? "bg-green-50 text-green-600" :
+                      "bg-red-50 text-red-500"
+                    }`}>
+                      {items.length}
+                    </span>
+                  )}
+                </div>
+                <div className="space-y-4">
+                  {items.length > 0 ? (
+                    items.map((req) => (
+                      <RequestCard key={req._id} request={req} onCancel={handleCancel} cancelling={cancelling === req._id} />
+                    ))
+                  ) : (
+                    <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-gray-50/50 py-12 text-sm text-gray-300">
+                      <Icon className="mb-2 h-8 w-8 text-gray-200" />
+                      {empty}
+                    </div>
+                  )}
+                </div>
+              </section>
+            );
+          })}
+        </div>
+      )}
 
-        <Section title="Completed" count={requests.completed.length} icon={FaCheckCircle}>
-          {requests.completed.map((req) => (
-            <RequestCard key={req._id} request={req} onCancel={handleCancel} cancelling={cancelling === req._id} />
-          ))}
-        </Section>
-
-        <Section title="Cancelled / Expired" count={requests.cancelled.length} icon={FaTimesCircle}>
-          {requests.cancelled.map((req) => (
-            <RequestCard key={req._id} request={req} onCancel={handleCancel} cancelling={cancelling === req._id} />
-          ))}
-        </Section>
-      </div>
+      {otpModal && <OTPModal requestId={otpModal} onClose={() => setOtpModal(null)} />}
     </div>
   );
 };

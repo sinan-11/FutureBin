@@ -61,7 +61,7 @@ const ApprovedCollectors = () => {
           </div>
         </div>
 
-        <div className="rounded-xl border border-surface-200 bg-surface p-6 shadow-sm">
+        <div className="rounded-xl border border-surface-200 bg-surface p-4 shadow-sm sm:p-6">
           {loading ? (
             <div className="flex justify-center py-8"><div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-400 border-t-transparent"></div></div>
           ) : filtered.length === 0 ? (
@@ -70,7 +70,7 @@ const ApprovedCollectors = () => {
               <p>{search ? "No approved collectors match your search" : "No approved collectors found"}</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
               <table className="min-w-full border-collapse">
                 <thead>
                   <tr className="bg-surface-50">

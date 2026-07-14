@@ -9,6 +9,7 @@ const Input = ({
   disabled = false,
   error,
   icon: Icon,
+  ...rest
 }) => {
   const id = name || label?.toLowerCase().replace(/\s+/g, "-");
 
@@ -34,6 +35,7 @@ const Input = ({
           placeholder={placeholder}
           required={required}
           disabled={disabled}
+          {...rest}
           className={`w-full rounded-lg border bg-surface px-4 py-3 outline-none transition-all duration-200 focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
             Icon ? "pl-10" : ""
           } ${

@@ -88,15 +88,15 @@ const AdminDashboard = () => {
       <main className="mx-auto max-w-7xl p-4 md:p-8">
         <h2 className="mb-8 text-3xl font-bold text-brand-700 md:text-4xl">Admin Dashboard</h2>
 
-        <div className="grid gap-6 md:grid-cols-3">
+        <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
           <StatCard title="Residents" value={stats.residents} icon={<FaUsers />} color="text-info" onClick={() => navigate(ROUTES.ADMIN_RESIDENTS)} />
           <StatCard title="Approved Collectors" value={stats.approvedCollectors} icon={<FaUserCheck />} color="text-success" onClick={() => navigate(ROUTES.ADMIN_APPROVED_COLLECTORS)} />
           <StatCard title="Pending Collectors" value={stats.pendingCollectors} icon={<FaClock />} color="text-warning" onClick={() => navigate(ROUTES.ADMIN_PENDING_COLLECTORS)} />
         </div>
 
-        <div className="mt-10 rounded-xl border border-surface-200 bg-surface p-6 shadow-sm">
-          <h3 className="mb-5 text-2xl font-bold text-surface-800">Pending Collector Approvals</h3>
-          <div className="overflow-x-auto">
+        <div className="mt-6 rounded-xl border border-surface-200 bg-surface p-4 shadow-sm sm:mt-10 sm:p-6">
+          <h3 className="mb-4 text-lg font-bold text-surface-800 sm:text-2xl">Pending Collector Approvals</h3>
+          <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
             <table className="min-w-full border-collapse">
               <thead>
                 <tr className="bg-surface-50">

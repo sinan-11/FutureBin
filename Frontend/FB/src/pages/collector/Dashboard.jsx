@@ -4,10 +4,12 @@ import {
   FaMapMarkerAlt, FaTruck, FaCheckCircle,
   FaArrowRight, FaRecycle, FaWeight,
   FaMoneyBillWave, FaUser, FaBroadcastTower, FaHome, FaWallet, FaTimes, FaKey, FaClipboardCheck,
+  FaCalendarAlt,
 } from "react-icons/fa";
 import { toast } from "react-toastify";
 
 import useAuth from "../../hooks/useAuth";
+import useSocket from "../../hooks/useSocket";
 import {
   updateAvailabilityService,
   updateLocationService,
@@ -21,13 +23,17 @@ import {
   arriveAtPickupService,
   verifyWeightService,
   generateOtpService,
+  regenerateOtpService,
   verifyOtpService,
 } from "../../services/pickupService";
 import { ROUTES } from "../../utils/constants";
 import { getErrorMessage, formatDateTime, capitalize } from "../../utils/helpers";
+import { playNotificationSound } from "../../utils/sound";
 import WalletPanel from "../../components/WalletPanel";
+import OtpInput from "../../components/OtpInput";
 
 const POLL_INTERVAL = 10000;
+const POLL_FALLBACK_DELAY = 5000;
 
 const STATUS_BADGES = {
   accepted: { label: "Accepted", color: "bg-indigo-100 text-indigo-700" },
@@ -40,6 +46,7 @@ const Dashboard = () => {
   const { user, accessToken } = useAuth();
   const navigate = useNavigate();
   const pollRef = useRef(null);
+  const pollTimeoutRef = useRef(null);
 
   const [profile, setProfile] = useState(user);
   const [isAvailable, setIsAvailable] = useState(user?.isAvailable || false);
@@ -76,6 +83,23 @@ const Dashboard = () => {
     } catch { /* silent */ }
   }, []);
 
+  const startPolling = useCallback(() => {
+    if (!pollRef.current) {
+      pollRef.current = setInterval(loadData, POLL_INTERVAL);
+    }
+  }, [loadData]);
+
+  const stopPolling = useCallback(() => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+    if (pollTimeoutRef.current) {
+      clearTimeout(pollTimeoutRef.current);
+      pollTimeoutRef.current = null;
+    }
+  }, []);
+
   useEffect(() => {
     if (accessToken) {
       loadProfile();
@@ -83,14 +107,77 @@ const Dashboard = () => {
     }
   }, [accessToken, loadProfile, loadData]);
 
+  const { isConnected } = useSocket({
+    collectorEvents: {
+      "new-request": useCallback(
+        (data) => {
+          if (!isAvailable) return;
+          const request = data.request;
+          toast.info(
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-100">
+                <FaRecycle className="h-5 w-5 text-brand-600" />
+              </div>
+              <div>
+                <p className="font-semibold text-gray-800">New Pickup Available</p>
+                <p className="text-sm text-gray-500">{request.pickupAddress}</p>
+              </div>
+            </div>,
+            {
+              autoClose: 8000,
+              onClick: () => navigate(ROUTES.COLLECTOR_AVAILABLE),
+            }
+          );
+          playNotificationSound();
+          loadData();
+        },
+        [isAvailable, loadData, navigate]
+      ),
+
+      "pickup-cancelled": useCallback(
+        (data) => {
+          toast.info("A resident cancelled a pickup");
+          loadData();
+        },
+        [loadData]
+      ),
+
+      "pickup-completed": useCallback(
+        (data) => {
+          toast.success("Pickup completed!");
+          loadData();
+        },
+        [loadData]
+      ),
+
+      "pickup-expired": useCallback(
+        (data) => {
+          loadData();
+        },
+        [loadData]
+      ),
+    },
+    onReconnect: useCallback(() => {
+      loadData();
+      stopPolling();
+    }, [loadData, stopPolling]),
+  });
+
   useEffect(() => {
     if (isAvailable) {
-      pollRef.current = setInterval(loadData, POLL_INTERVAL);
+      if (isConnected) {
+        stopPolling();
+      } else {
+        pollTimeoutRef.current = setTimeout(() => {
+          startPolling();
+        }, POLL_FALLBACK_DELAY);
+      }
     } else {
-      clearInterval(pollRef.current);
+      stopPolling();
     }
-    return () => clearInterval(pollRef.current);
-  }, [isAvailable, loadData]);
+
+    return () => stopPolling();
+  }, [isAvailable, isConnected, startPolling, stopPolling]);
 
   const handleToggle = async () => {
     const newStatus = !isAvailable;
@@ -255,33 +342,33 @@ const Dashboard = () => {
       {/* ─── Top Bar ─── */}
       <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-600 text-white font-bold text-sm">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-brand-600 text-white font-bold text-sm">
               {p.name?.split(" ").map((n) => n[0]).join("").toUpperCase() || "C"}
             </div>
-            <div>
-              <p className="font-bold text-gray-800 text-sm leading-tight">{p.name || "Collector"}</p>
-              <p className="text-xs text-gray-400 capitalize">{p.collectorDetails?.vehicleNumber || "Collector"}</p>
+            <div className="min-w-0">
+              <p className="font-bold text-gray-800 text-sm leading-tight truncate">{p.name || "Collector"}</p>
+              <p className="text-xs text-gray-400 capitalize truncate">{p.collectorDetails?.vehicleNumber || "Collector"}</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <button
               onClick={() => navigate(ROUTES.HOME)}
-              className="flex h-8 w-8 items-center justify-center rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition"
+              className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition"
             >
               <FaHome className="h-4 w-4" />
             </button>
             <button
               onClick={() => setShowWallet(true)}
-              className="flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-200 transition"
+              className="hidden xs:flex sm:flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-200 transition"
             >
               <FaWallet className="h-3 w-3" />
-              Wallet
+              <span className="hidden sm:inline">Wallet</span>
             </button>
             <button
               onClick={handleLocation}
               disabled={locationLoading}
-              className="flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-200 transition"
+              className="hidden sm:flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-200 transition"
             >
               <FaMapMarkerAlt className={locationLoading ? "animate-pulse" : ""} />
               {p.location?.coordinates
@@ -290,18 +377,18 @@ const Dashboard = () => {
             </button>
             <button
               onClick={handleToggle}
-              className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${
+              className={`relative inline-flex h-7 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
                 isAvailable ? "bg-green-500" : "bg-gray-300"
               }`}
             >
               <span
                 className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${
-                  isAvailable ? "translate-x-6" : "translate-x-1"
+                  isAvailable ? "translate-x-[1.375rem]" : "translate-x-0.5"
                 }`}
               />
             </button>
-            <span className={`text-xs font-semibold ${isAvailable ? "text-green-600" : "text-gray-400"}`}>
-              {isAvailable ? "Online" : "Offline"}
+            <span className={`text-xs font-semibold flex-shrink-0 ${isAvailable ? "text-green-600" : "text-gray-400"}`}>
+              {isAvailable ? "On" : "Off"}
             </span>
           </div>
         </div>
@@ -365,7 +452,13 @@ const Dashboard = () => {
                         <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-gray-500">
                           <span className="flex items-center gap-1"><FaWeight />{req.estimatedWeight} kg</span>
                           <span className="flex items-center gap-1"><FaMoneyBillWave />₹{req.estimatedPrice}</span>
+                          {req.scheduledAt && (
+                            <span className="flex items-center gap-1"><FaCalendarAlt />{formatDateTime(req.scheduledAt)}</span>
+                          )}
                         </div>
+                        {req.description && (
+                          <p className="mt-1.5 text-xs text-gray-400 italic line-clamp-2">{req.description}</p>
+                        )}
                         {req.resident && (
                           <div className="mt-2 flex items-center gap-2 text-xs text-gray-400">
                             <FaUser />{req.resident.name}
@@ -503,21 +596,12 @@ const Dashboard = () => {
                           />
                         )}
         {req.status === "weight_verified" && (
-          <>
-            <ActionButton
-              onClick={() => handleVerifyOtp(req._id)}
-              label="Enter OTP"
-              icon={<FaClipboardCheck />}
-              color="bg-brand-600 hover:bg-brand-700"
-            />
-            <ActionButton
-              onClick={() => handleGenerateOtp(req._id)}
-              loading={actionLoading === `otp-${req._id}`}
-              label="Generate OTP"
-              icon={<FaKey />}
-              color="bg-amber-600 hover:bg-amber-700"
-            />
-          </>
+          <ActionButton
+            onClick={() => handleVerifyOtp(req._id)}
+            label="Enter OTP"
+            icon={<FaClipboardCheck />}
+            color="bg-brand-600 hover:bg-brand-700"
+          />
         )}
                       </div>
                     </div>
@@ -600,17 +684,27 @@ const Dashboard = () => {
           <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl animate-fade-in">
             <h3 className="text-lg font-bold text-gray-800 mb-1">Enter OTP</h3>
             <p className="text-sm text-gray-400 mb-4">Ask the resident for the 6-digit OTP to complete the pickup.</p>
-            <input
-              type="text"
-              inputMode="numeric"
-              maxLength={6}
-              value={otpInput}
-              onChange={(e) => setOtpInput(e.target.value.replace(/\D/g, "").slice(0, 6))}
-              placeholder="000000"
-              className="w-full rounded-xl border border-gray-200 px-4 py-3 text-center text-2xl font-bold tracking-[0.5em] text-gray-800 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-              autoFocus
-            />
+            <OtpInput value={otpInput} onChange={setOtpInput} />
             <div className="mt-4 flex gap-3">
+              <button
+                onClick={() => handleGenerateOtp(otpModal)}
+                disabled={actionLoading === `otp-${otpModal}`}
+                className="flex items-center justify-center gap-1.5 w-full rounded-xl bg-amber-500 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-amber-600 active:scale-95 disabled:bg-gray-300 disabled:cursor-not-allowed"
+              >
+                {actionLoading === `otp-${otpModal}` ? (
+                  <span className="flex items-center gap-1.5">
+                    <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    Generating...
+                  </span>
+                ) : (
+                  <><FaKey className="h-3.5 w-3.5" /> Regenerate OTP</>
+                )}
+              </button>
+            </div>
+            <div className="mt-3 flex gap-3">
               <button
                 onClick={() => setOtpModal(null)}
                 className="flex-1 rounded-xl bg-gray-100 py-3 text-sm font-semibold text-gray-600 transition hover:bg-gray-200"

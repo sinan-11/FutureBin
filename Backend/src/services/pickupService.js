@@ -3,7 +3,15 @@ import PickupRequest from "../models/PickupRequest.js";
 import User from "../models/User.js";
 import { sendPickupOtp, sendPickupCompletedToResident, sendPickupCompletedToCollector } from "../utils/sendEmail.js";
 
-const PRICE_PER_KG = Number(process.env.PICKUP_PRICE_PER_KG) || 5;
+const WASTE_RATES = {
+  recyclable: Number(process.env.PRICE_RECYCLABLE) || 8,
+  organic: Number(process.env.PRICE_ORGANIC) || 3,
+  hazardous: Number(process.env.PRICE_HAZARDOUS) || 15,
+  electronic: Number(process.env.PRICE_ELECTRONIC) || 12,
+  general: Number(process.env.PRICE_GENERAL) || 5,
+};
+
+const DEFAULT_RATE = Number(process.env.PICKUP_PRICE_PER_KG) || 5;
 const SEARCH_RADIUS = Number(process.env.PICKUP_SEARCH_RADIUS) || 5000;
 const EXPIRY_MINUTES = Number(process.env.PICKUP_EXPIRY_MINUTES) || 30;
 
@@ -14,6 +22,23 @@ const VALID_TRANSITIONS = {
   weight_verified: ["completed"],
 };
 
+const ACTIVE_STATUSES = [
+  "accepted",
+  "collector_arrived",
+  "collecting",
+  "weight_verified",
+  "payment_pending",
+  "paid",
+];
+
+export const hasActivePickup = async (collectorId) => {
+  const count = await PickupRequest.countDocuments({
+    collector: collectorId,
+    status: { $in: ACTIVE_STATUSES },
+  });
+  return count > 0;
+};
+
 const STATUS_TIMESTAMPS = {
   accepted: "acceptedAt",
   collector_arrived: "arrivedAt",
@@ -21,8 +46,9 @@ const STATUS_TIMESTAMPS = {
   cancelled: "cancelledAt",
 };
 
-export const calculatePrice = (weight) => {
-  return Math.round(weight * PRICE_PER_KG * 100) / 100;
+export const calculatePrice = (weight, wasteType) => {
+  const rate = WASTE_RATES[wasteType] || DEFAULT_RATE;
+  return Math.round(weight * rate * 100) / 100;
 };
 
 export const findNearbyCollectors = async (
@@ -60,7 +86,7 @@ export const createPickupRequest = async (data, residentId) => {
     scheduledAt,
   } = data;
 
-  const estimatedPrice = calculatePrice(estimatedWeight);
+  const estimatedPrice = calculatePrice(estimatedWeight, wasteType);
 
   const request = await PickupRequest.create({
     resident: residentId,
@@ -93,6 +119,13 @@ export const createPickupRequest = async (data, residentId) => {
 };
 
 export const acceptPickupRequest = async (requestId, collectorId) => {
+  const active = await hasActivePickup(collectorId);
+  if (active) {
+    throw new Error(
+      "You already have an active pickup. Complete it before accepting another request."
+    );
+  }
+
   const request = await PickupRequest.findOneAndUpdate(
     {
       _id: requestId,
@@ -353,7 +386,7 @@ export const verifyActualWeight = async (requestId, collectorId, actualWeight) =
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
   request.actualWeight = Number(actualWeight);
-  request.finalAmount = calculatePrice(Number(actualWeight));
+  request.finalAmount = calculatePrice(Number(actualWeight), request.wasteType);
   request.status = "weight_verified";
   request.completionOtp = otp;
   request.completionOtpExpiresAt = expiresAt;

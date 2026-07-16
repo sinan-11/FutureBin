@@ -3,15 +3,6 @@ import { io } from "socket.io-client";
 import { API_BASE_URL } from "../utils/constants";
 import store from "../store/store";
 
-/**
- * Role-aware Socket.IO hook with smart polling fallback.
- *
- * @param {Object} options
- * @param {Object} options.collectorEvents - Map of event → handler for collector role
- * @param {Object} options.residentEvents  - Map of event → handler for resident role
- * @param {Function} options.onReconnect   - Called once after successful reconnection
- * @returns {{ socketRef, isConnected }}
- */
 const useSocket = ({ collectorEvents = {}, residentEvents = {}, onReconnect } = {}) => {
   const socketRef = useRef(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -50,11 +41,9 @@ const useSocket = ({ collectorEvents = {}, residentEvents = {}, onReconnect } = 
     });
 
     socket.on("connect", () => {
-      console.log("[SOCKET] Connected:", socket.id);
       setIsConnected(true);
 
       if (hasReconnectedRef.current) {
-        console.log("[SOCKET] Reconnected — syncing data");
         if (onReconnectRef.current) {
           onReconnectRef.current();
         }
@@ -62,8 +51,7 @@ const useSocket = ({ collectorEvents = {}, residentEvents = {}, onReconnect } = 
       }
     });
 
-    socket.on("disconnect", (reason) => {
-      console.log("[SOCKET] Disconnected:", reason);
+    socket.on("disconnect", () => {
       setIsConnected(false);
       hasReconnectedRef.current = true;
     });

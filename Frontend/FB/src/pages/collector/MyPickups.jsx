@@ -8,6 +8,7 @@ import {
 } from "react-icons/fa";
 import { toast } from "react-toastify";
 
+import useAuth from "../../hooks/useAuth";
 import useSocket from "../../hooks/useSocket";
 import {
   getAssignedPickupsService,
@@ -22,7 +23,7 @@ import { ROUTES } from "../../utils/constants";
 import { getErrorMessage, formatDateTime, capitalize } from "../../utils/helpers";
 import { ListSkeleton } from "../../components/Skeleton";
 import OtpInput from "../../components/OtpInput";
-import PickupLocationMap from "../../components/map/PickupLocationMap";
+import PickupRouteMap from "../../components/map/PickupRouteMap";
 
 const STATUS_BADGES = {
   accepted: { label: "Accepted", color: "bg-indigo-50 text-indigo-700 ring-indigo-200" },
@@ -73,6 +74,7 @@ const PickupCard = ({
   loading,
   mapOpen,
   onToggleMap,
+  collectorLocation,
 }) => {
   const badge = STATUS_BADGES[request.status] || { label: request.status, color: "bg-gray-50 text-gray-600 ring-gray-200" };
   const isFinal = request.status === "completed";
@@ -181,7 +183,9 @@ const PickupCard = ({
             <FaMap className="h-3 w-3" />
             {mapOpen === request._id ? "Hide Map" : "View Map"}
           </button>
-          {mapOpen === request._id && <PickupLocationMap pickup={request} />}
+          {mapOpen === request._id && (
+            <PickupRouteMap pickup={request} collectorLocation={collectorLocation} />
+          )}
         </div>
       )}
     </div>
@@ -233,6 +237,7 @@ const POLL_INTERVAL = 10000;
 const POLL_FALLBACK_DELAY = 5000;
 
 const MyPickups = () => {
+  const { user } = useAuth();
   const navigate = useNavigate();
   const pollRef = useRef(null);
   const pollTimeoutRef = useRef(null);
@@ -452,6 +457,7 @@ const MyPickups = () => {
               loading={actionLoading}
               mapOpen={mapOpen}
               onToggleMap={toggleMap}
+              collectorLocation={user?.location}
             />
           ))}
         </Section>
@@ -468,6 +474,7 @@ const MyPickups = () => {
               loading={actionLoading}
               mapOpen={mapOpen}
               onToggleMap={toggleMap}
+              collectorLocation={user?.location}
             />
           ))}
         </Section>

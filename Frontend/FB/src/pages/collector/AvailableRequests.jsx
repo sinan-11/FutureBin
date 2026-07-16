@@ -4,12 +4,13 @@ import {
   FaBroadcastTower, FaWeight, FaMoneyBillWave,
   FaUser, FaRecycle, FaArrowLeft,
   FaArrowRight, FaMapMarkerAlt, FaTimes,
-  FaCalendarAlt, FaClock,
+  FaCalendarAlt, FaClock, FaInfoCircle,
 } from "react-icons/fa";
 import { toast } from "react-toastify";
 
 import {
   getAvailablePickupsService,
+  getAssignedPickupsService,
   acceptPickupService,
   rejectPickupService,
 } from "../../services/pickupService";
@@ -36,9 +37,10 @@ const Spinner = () => (
   </svg>
 );
 
-const RequestCard = ({ req, onAccept, onReject, accepting, rejecting }) => {
+const RequestCard = ({ req, onAccept, onReject, accepting, rejecting, hasActivePickup }) => {
   const wasteStyle = WASTE_COLORS[req.wasteType] || WASTE_COLORS.general;
   const loading = accepting === req._id || rejecting === req._id;
+  const acceptDisabled = loading || hasActivePickup;
 
   return (
     <div className="group rounded-2xl bg-white border border-gray-100 p-5 shadow-sm transition-all hover:shadow-md hover:border-gray-200 hover:-translate-y-0.5">
@@ -116,15 +118,17 @@ const RequestCard = ({ req, onAccept, onReject, accepting, rejecting }) => {
           </button>
           <button
             onClick={() => onAccept(req._id)}
-            disabled={loading}
+            disabled={acceptDisabled}
             className={`rounded-xl px-5 py-2.5 text-sm font-bold text-white shadow-sm transition active:scale-95 ${
-              accepting === req._id
+              acceptDisabled
                 ? "bg-gray-400 cursor-not-allowed"
                 : "bg-brand-600 hover:bg-brand-700 hover:shadow-md"
             }`}
           >
             {accepting === req._id ? (
               <span className="flex items-center gap-1.5"><Spinner /> Accepting</span>
+            ) : hasActivePickup ? (
+              <span className="flex items-center gap-1.5">Complete Current Pickup First</span>
             ) : (
               <span className="flex items-center gap-1.5">Accept <FaArrowRight className="h-3.5 w-3.5" /></span>
             )}
@@ -143,11 +147,16 @@ const AvailableRequests = () => {
   const [requests, setRequests] = useState([]);
   const [accepting, setAccepting] = useState(null);
   const [rejecting, setRejecting] = useState(null);
+  const [hasActivePickup, setHasActivePickup] = useState(false);
 
   const loadAvailable = async () => {
     try {
-      const data = await getAvailablePickupsService();
+      const [data, assigned] = await Promise.all([
+        getAvailablePickupsService(),
+        getAssignedPickupsService(),
+      ]);
       setRequests(data || []);
+      setHasActivePickup((assigned?.active || []).length > 0);
     } catch {
       toast.error("Failed to load available requests");
     } finally {
@@ -215,6 +224,9 @@ const AvailableRequests = () => {
       if (msg.includes("already been accepted")) {
         toast.error("Already taken by another collector");
         setRequests((prev) => prev.filter((r) => r._id !== id));
+      } else if (msg.includes("already have an active pickup")) {
+        toast.error(msg);
+        setHasActivePickup(true);
       } else {
         toast.error(msg);
       }
@@ -252,6 +264,15 @@ const AvailableRequests = () => {
         </button>
       </div>
 
+      {hasActivePickup && (
+        <div className="mb-5 rounded-2xl bg-amber-50 border border-amber-200 px-5 py-4 flex items-start gap-3">
+          <FaInfoCircle className="h-5 w-5 text-amber-500 mt-0.5 flex-shrink-0" />
+          <p className="text-sm font-medium text-amber-800">
+            You already have an active pickup. Complete it before accepting another request.
+          </p>
+        </div>
+      )}
+
       {requests.length === 0 ? (
         <div className="rounded-2xl bg-white border border-gray-100 p-12 text-center shadow-sm">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-50">
@@ -274,6 +295,7 @@ const AvailableRequests = () => {
                 onReject={handleReject}
                 accepting={accepting}
                 rejecting={rejecting}
+                hasActivePickup={hasActivePickup}
               />
             </div>
           ))}

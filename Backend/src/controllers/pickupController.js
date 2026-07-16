@@ -153,7 +153,10 @@ export const acceptRequest = async (req, res) => {
       data: request,
     });
   } catch (error) {
-    if (error.message.includes("already been accepted")) {
+    if (
+      error.message.includes("already been accepted") ||
+      error.message.includes("already have an active pickup")
+    ) {
       return res.status(409).json({
         success: false,
         message: error.message,

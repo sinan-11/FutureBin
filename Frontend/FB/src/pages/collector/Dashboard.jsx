@@ -6,6 +6,7 @@ import {
   FaMoneyBillWave, FaUser, FaBroadcastTower, FaHome, FaWallet, FaTimes, FaKey, FaClipboardCheck,
   FaCalendarAlt,
   FaMap,
+  FaInfoCircle,
 } from "react-icons/fa";
 import { toast } from "react-toastify";
 
@@ -31,7 +32,7 @@ import { ROUTES } from "../../utils/constants";
 import { getErrorMessage, formatDateTime, capitalize } from "../../utils/helpers";
 import { playNotificationSound } from "../../utils/sound";
 import WalletPanel from "../../components/WalletPanel";
-import PickupLocationMap from "../../components/map/PickupLocationMap";
+import PickupRouteMap from "../../components/map/PickupRouteMap";
 import OtpInput from "../../components/OtpInput";
 
 const POLL_INTERVAL = 10000;
@@ -249,6 +250,9 @@ const Dashboard = () => {
       if (msg.includes("already been accepted")) {
         toast.error("Already taken by another collector");
         setAvailable((prev) => prev.filter((r) => r._id !== id));
+      } else if (msg.includes("already have an active pickup")) {
+        toast.error(msg);
+        loadData();
       } else {
         toast.error(msg);
       }
@@ -413,6 +417,16 @@ const Dashboard = () => {
           </div>
         )}
 
+        {/* ─── Active Pickup Banner ─── */}
+        {isAvailable && activePickups.length > 0 && (
+          <div className="rounded-2xl bg-amber-50 border border-amber-200 px-5 py-4 flex items-start gap-3">
+            <FaInfoCircle className="h-5 w-5 text-amber-500 mt-0.5 flex-shrink-0" />
+            <p className="text-sm font-medium text-amber-800">
+              You already have an active pickup. Complete it before accepting another request.
+            </p>
+          </div>
+        )}
+
         {/* ─── Available Orders ─── */}
         {isAvailable && (
           <section>
@@ -495,9 +509,9 @@ const Dashboard = () => {
                         </button>
                         <button
                           onClick={() => handleAccept(req._id)}
-                          disabled={accepting === req._id || rejecting === req._id}
+                          disabled={accepting === req._id || rejecting === req._id || activePickups.length > 0}
                           className={`flex-shrink-0 rounded-xl px-5 py-2.5 text-sm font-bold text-white transition ${
-                            accepting === req._id
+                            accepting === req._id || activePickups.length > 0
                               ? "bg-gray-400 cursor-not-allowed"
                               : "bg-brand-600 hover:bg-brand-700 active:scale-95"
                           }`}
@@ -510,6 +524,8 @@ const Dashboard = () => {
                               </svg>
                               Accepting
                             </span>
+                          ) : activePickups.length > 0 ? (
+                            <span className="flex items-center gap-1.5">Complete Current Pickup First</span>
                           ) : (
                             <span className="flex items-center gap-1.5">Accept <FaArrowRight className="h-3 w-3" /></span>
                           )}
@@ -527,7 +543,9 @@ const Dashboard = () => {
                           <FaMap className="h-3 w-3" />
                           {mapOpen === `avail-${req._id}` ? "Hide Map" : "View Map"}
                         </button>
-                        {mapOpen === `avail-${req._id}` && <PickupLocationMap pickup={req} />}
+                        {mapOpen === `avail-${req._id}` && (
+                          <PickupRouteMap pickup={req} collectorLocation={profile.location} />
+                        )}
                       </div>
                     )}
                   </div>
@@ -637,7 +655,9 @@ const Dashboard = () => {
                           <FaMap className="h-3 w-3" />
                           {mapOpen === `active-${req._id}` ? "Hide Map" : "View Map"}
                         </button>
-                        {mapOpen === `active-${req._id}` && <PickupLocationMap pickup={req} />}
+                        {mapOpen === `active-${req._id}` && (
+                          <PickupRouteMap pickup={req} collectorLocation={profile.location} />
+                        )}
                       </div>
                     )}
                   </div>

@@ -40,6 +40,7 @@ export const ROUTES = {
     "/admin/approved-collectors",
   ADMIN_PENDING_COLLECTORS:
     "/admin/pending-collectors",
+  ADMIN_SETTINGS: "/admin/settings",
 };
 
 // API Endpoints
@@ -83,6 +84,10 @@ export const API_ENDPOINTS = {
   WALLET_CREATE: "/wallet/create",
   WALLET_ME: "/wallet/me",
   WALLET_TRANSACTIONS: "/wallet/transactions",
+
+  // Settings
+  GET_SETTINGS: "/settings",
+  UPDATE_SETTINGS: "/settings/bulk",
 };
 
 // Toast Messages

@@ -13,8 +13,10 @@ import authRoutes from "./src/routes/authRoutes.js";
 import userRoutes from "./src/routes/userRoutes.js";
 import pickupRoutes from "./src/routes/pickupRoutes.js";
 import walletRoutes from "./src/routes/walletRoutes.js";
+import settingRoutes from "./src/routes/settingRoutes.js";
+import { seedSettings } from "./src/services/settingService.js";
 
-connectDB();
+connectDB().then(() => seedSettings());
 
 const app = express();
 const server = http.createServer(app);
@@ -43,6 +45,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/pickup-requests", pickupRoutes);
 app.use("/api/wallet", walletRoutes);
+app.use("/api/settings", settingRoutes);
 
 // 404 Handler
 app.use((req, res) => {

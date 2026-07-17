@@ -32,6 +32,7 @@ import CollectorAvailable from "./pages/collector/AvailableRequests";
 import Residents from "./pages/admin/Residents";
 import ApprovedCollectors from "./pages/admin/ApprovedCollectors";
 import PendingCollectors from "./pages/admin/PendingCollectors";
+import AdminSettings from "./pages/admin/Settings";
 
 // Route Guards
 import PublicRoute from "./components/PublicRoute";
@@ -107,6 +108,7 @@ function App() {
           <Route path={ROUTES.ADMIN_RESIDENTS} element={<Residents />} />
           <Route path={ROUTES.ADMIN_APPROVED_COLLECTORS} element={<ApprovedCollectors />} />
           <Route path={ROUTES.ADMIN_PENDING_COLLECTORS} element={<PendingCollectors />} />
+          <Route path={ROUTES.ADMIN_SETTINGS} element={<AdminSettings />} />
         </Route>
       </Route>
 

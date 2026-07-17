@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { FaBars, FaTimes, FaTachometerAlt, FaUsers, FaUserCheck, FaClock, FaSignOutAlt } from "react-icons/fa";
+import { FaBars, FaTimes, FaTachometerAlt, FaUsers, FaUserCheck, FaClock, FaSignOutAlt, FaCog } from "react-icons/fa";
 import { toast } from "react-toastify";
 
 import Button from "../components/Button";
@@ -22,6 +22,7 @@ const AdminLayout = ({ children, title }) => {
     { label: "Residents", icon: <FaUsers />, path: ROUTES.ADMIN_RESIDENTS },
     { label: "Approved Collectors", icon: <FaUserCheck />, path: ROUTES.ADMIN_APPROVED_COLLECTORS },
     { label: "Pending Collectors", icon: <FaClock />, path: ROUTES.ADMIN_PENDING_COLLECTORS },
+    { label: "Settings", icon: <FaCog />, path: ROUTES.ADMIN_SETTINGS },
   ];
 
   const sidebarContent = (

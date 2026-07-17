@@ -2,16 +2,8 @@ import crypto from "crypto";
 import PickupRequest from "../models/PickupRequest.js";
 import User from "../models/User.js";
 import { sendPickupOtp, sendPickupCompletedToResident, sendPickupCompletedToCollector } from "../utils/sendEmail.js";
+import { getWastePrices } from "./settingService.js";
 
-const WASTE_RATES = {
-  recyclable: Number(process.env.PRICE_RECYCLABLE) || 8,
-  organic: Number(process.env.PRICE_ORGANIC) || 3,
-  hazardous: Number(process.env.PRICE_HAZARDOUS) || 15,
-  electronic: Number(process.env.PRICE_ELECTRONIC) || 12,
-  general: Number(process.env.PRICE_GENERAL) || 5,
-};
-
-const DEFAULT_RATE = Number(process.env.PICKUP_PRICE_PER_KG) || 5;
 const SEARCH_RADIUS = Number(process.env.PICKUP_SEARCH_RADIUS) || 5000;
 const EXPIRY_MINUTES = Number(process.env.PICKUP_EXPIRY_MINUTES) || 30;
 
@@ -46,8 +38,9 @@ const STATUS_TIMESTAMPS = {
   cancelled: "cancelledAt",
 };
 
-export const calculatePrice = (weight, wasteType) => {
-  const rate = WASTE_RATES[wasteType] || DEFAULT_RATE;
+export const calculatePrice = async (weight, wasteType) => {
+  const prices = await getWastePrices();
+  const rate = prices[wasteType] || prices.defaultRate;
   return Math.round(weight * rate * 100) / 100;
 };
 
@@ -86,7 +79,7 @@ export const createPickupRequest = async (data, residentId) => {
     scheduledAt,
   } = data;
 
-  const estimatedPrice = calculatePrice(estimatedWeight, wasteType);
+  const estimatedPrice = await calculatePrice(estimatedWeight, wasteType);
 
   const request = await PickupRequest.create({
     resident: residentId,
@@ -386,7 +379,7 @@ export const verifyActualWeight = async (requestId, collectorId, actualWeight) =
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
   request.actualWeight = Number(actualWeight);
-  request.finalAmount = calculatePrice(Number(actualWeight), request.wasteType);
+  request.finalAmount = await calculatePrice(Number(actualWeight), request.wasteType);
   request.status = "weight_verified";
   request.completionOtp = otp;
   request.completionOtpExpiresAt = expiresAt;

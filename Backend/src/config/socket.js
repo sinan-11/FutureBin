@@ -86,9 +86,7 @@ export const initSocket = (server) => {
 
 export const getIO = () => io;
 
-/**
- * Emit an event to a single collector by their user ID.
- */
+
 export const notifyCollectorById = (collectorId, event, data) => {
   if (!io) {
     console.log(`[SOCKET] notifyCollectorById: io is null, cannot emit "${event}"`);
@@ -105,10 +103,7 @@ export const notifyCollectorById = (collectorId, event, data) => {
   }
 };
 
-/**
- * Emit an event to specific collectors by their user IDs.
- * Falls back to broadcasting to the "collectors" room if no IDs provided.
- */
+
 export const notifyCollectorsByIds = (collectorIds, event, data) => {
   if (!io) return;
 
@@ -134,9 +129,7 @@ export const notifyCollectorsByIds = (collectorIds, event, data) => {
   }
 };
 
-/**
- * Emit an event to a single resident by their user ID.
- */
+
 export const notifyResidentById = (residentId, event, data) => {
   if (!io) return;
   const sockets = residentSockets.get(String(residentId));
@@ -147,9 +140,7 @@ export const notifyResidentById = (residentId, event, data) => {
   }
 };
 
-/**
- * Emit an event to both the resident and collector involved in a pickup.
- */
+
 export const notifyPickupParticipants = (residentId, collectorId, event, data) => {
   notifyResidentById(residentId, event, data);
   if (collectorId) {

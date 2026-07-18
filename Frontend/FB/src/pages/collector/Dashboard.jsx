@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import {
   FaMapMarkerAlt, FaTruck, FaCheckCircle,
   FaArrowRight, FaRecycle, FaWeight,
@@ -7,6 +7,7 @@ import {
   FaCalendarAlt,
   FaMap,
   FaInfoCircle,
+  FaLeaf, FaSignOutAlt,
 } from "react-icons/fa";
 import { toast } from "react-toastify";
 
@@ -17,6 +18,7 @@ import {
   updateLocationService,
   getMeService,
 } from "../../services/userService";
+import { logoutService } from "../../services/authService";
 import {
   getAvailablePickupsService,
   getAssignedPickupsService,
@@ -50,6 +52,8 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const pollRef = useRef(null);
   const pollTimeoutRef = useRef(null);
+  const watchIdRef = useRef(null);
+  const locationIntervalRef = useRef(null);
 
   const [profile, setProfile] = useState(user);
   const [isAvailable, setIsAvailable] = useState(user?.isAvailable || false);
@@ -66,6 +70,7 @@ const Dashboard = () => {
   const [weightInput, setWeightInput] = useState("");
   const [otpInput, setOtpInput] = useState("");
   const [mapOpen, setMapOpen] = useState(null);
+  const [locationError, setLocationError] = useState(null);
 
   const loadProfile = useCallback(async () => {
     try {
@@ -111,7 +116,7 @@ const Dashboard = () => {
     }
   }, [accessToken, loadProfile, loadData]);
 
-  const { isConnected } = useSocket({
+  const { socketRef, isConnected } = useSocket({
     collectorEvents: {
       "new-request": useCallback(
         (data) => {
@@ -182,6 +187,78 @@ const Dashboard = () => {
 
     return () => stopPolling();
   }, [isAvailable, isConnected, startPolling, stopPolling]);
+
+  useEffect(() => {
+    const acceptedPickup = activePickups.find((p) => p.status === "accepted");
+
+    if (!acceptedPickup) {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
+      if (locationIntervalRef.current) {
+        clearInterval(locationIntervalRef.current);
+        locationIntervalRef.current = null;
+      }
+      return;
+    }
+
+    if (!navigator.geolocation) {
+      setLocationError("Geolocation not supported");
+      return;
+    }
+
+    const pickupId = acceptedPickup._id;
+
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      (pos) => {
+        setLocationError(null);
+        const { latitude, longitude } = pos.coords;
+
+        const socket = socketRef.current;
+        if (socket) {
+          socket.emit("collector-location-update", {
+            pickupId,
+            latitude,
+            longitude,
+          });
+        }
+      },
+      (error) => {
+        console.error("[GPS] watchPosition error:", error);
+        setLocationError(error.message);
+      },
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
+    );
+
+    locationIntervalRef.current = setInterval(() => {
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          try {
+            const { longitude, latitude } = pos.coords;
+            await updateLocationService(longitude, latitude);
+          } catch (error) {
+            console.error("[GPS] Failed to persist location:", error);
+          }
+        },
+        (error) => {
+          console.error("[GPS] getCurrentPosition error:", error);
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    }, 30000);
+
+    return () => {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
+      if (locationIntervalRef.current) {
+        clearInterval(locationIntervalRef.current);
+        locationIntervalRef.current = null;
+      }
+    };
+  }, [activePickups, isConnected, socketRef]);
 
   const handleToggle = async () => {
     const newStatus = !isAvailable;
@@ -345,62 +422,78 @@ const Dashboard = () => {
     setMapOpen((prev) => (prev === id ? null : id));
   };
 
+  const handleLogout = async () => {
+    await logoutService();
+    toast.success("Logged out");
+    navigate(ROUTES.HOME, { replace: true });
+  };
+
   const p = profile || {};
   const totalAvailable = available.length;
 
   return (
     <div className="min-h-screen bg-gray-50">
       {/* ─── Top Bar ─── */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-brand-600 text-white font-bold text-sm">
-              {p.name?.split(" ").map((n) => n[0]).join("").toUpperCase() || "C"}
+      <header className="bg-brand-700/95 shadow-lg shadow-brand-900/20 backdrop-blur-xl border-b border-white/10">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3 md:px-8 md:py-4">
+          <Link to={ROUTES.HOME} className="flex items-center gap-2 group">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/15 transition group-hover:bg-white/25 group-hover:scale-105">
+              <FaLeaf className="h-4 w-4 text-white" />
             </div>
-            <div className="min-w-0">
-              <p className="font-bold text-gray-800 text-sm leading-tight truncate">{p.name || "Collector"}</p>
-              <p className="text-xs text-gray-400 capitalize truncate">{p.collectorDetails?.vehicleNumber || "Collector"}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-1.5 sm:gap-2">
-            <button
-              onClick={() => navigate(ROUTES.HOME)}
-              className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition"
+            <span className="text-xl font-extrabold tracking-tight text-white md:text-2xl">
+              Future<span className="text-brand-200">Bin</span>
+            </span>
+          </Link>
+          <div className="flex items-center gap-1 sm:gap-1.5">
+            <Link
+              to={ROUTES.HOME}
+              className="hidden sm:flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium text-white/80 transition hover:bg-white/10 hover:text-white"
             >
-              <FaHome className="h-4 w-4" />
-            </button>
+              <FaHome className="h-3.5 w-3.5" />
+              Home
+            </Link>
             <button
               onClick={() => setShowWallet(true)}
-              className="hidden xs:flex sm:flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-200 transition"
+              className="flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium text-white/80 transition hover:bg-white/10 hover:text-white"
             >
-              <FaWallet className="h-3 w-3" />
+              <FaWallet className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Wallet</span>
             </button>
             <button
               onClick={handleLocation}
               disabled={locationLoading}
-              className="hidden sm:flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-200 transition"
+              className="hidden sm:flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium text-white/80 transition hover:bg-white/10 hover:text-white"
             >
-              <FaMapMarkerAlt className={locationLoading ? "animate-pulse" : ""} />
+              <FaMapMarkerAlt className={`h-3.5 w-3.5 ${locationLoading ? "animate-pulse" : ""}`} />
               {p.location?.coordinates
                 ? `${p.location.coordinates[1].toFixed(2)}, ${p.location.coordinates[0].toFixed(2)}`
                 : "Set location"}
             </button>
-            <button
-              onClick={handleToggle}
-              className={`relative inline-flex h-7 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
-                isAvailable ? "bg-green-500" : "bg-gray-300"
-              }`}
-            >
-              <span
-                className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${
-                  isAvailable ? "translate-x-[1.375rem]" : "translate-x-0.5"
+            <div className="mx-1 hidden h-4 w-px bg-white/20 sm:block" />
+            <div className="flex items-center gap-2 rounded-full bg-white/10 pl-1 pr-2 py-1">
+              <button
+                onClick={handleToggle}
+                className={`relative inline-flex h-6 w-10 flex-shrink-0 items-center rounded-full transition-colors ${
+                  isAvailable ? "bg-green-500" : "bg-white/20"
                 }`}
-              />
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition ${
+                    isAvailable ? "translate-x-[1.375rem]" : "translate-x-1"
+                  }`}
+                />
+              </button>
+              <span className={`text-xs font-semibold ${isAvailable ? "text-green-300" : "text-white/50"}`}>
+                {isAvailable ? "On" : "Off"}
+              </span>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-1.5 rounded-full p-2 text-white/50 transition hover:bg-red-500/20 hover:text-red-300"
+              title="Logout"
+            >
+              <FaSignOutAlt size={14} />
             </button>
-            <span className={`text-xs font-semibold flex-shrink-0 ${isAvailable ? "text-green-600" : "text-gray-400"}`}>
-              {isAvailable ? "On" : "Off"}
-            </span>
           </div>
         </div>
       </header>

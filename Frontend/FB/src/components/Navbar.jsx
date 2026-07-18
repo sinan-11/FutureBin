@@ -1,9 +1,8 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { FaBars, FaTimes, FaMoon, FaSun } from "react-icons/fa";
+import { FaBars, FaTimes, FaMoon, FaSun, FaHome, FaLeaf, FaSignOutAlt } from "react-icons/fa";
 import { toast } from "react-toastify";
 
-import Button from "./Button";
 import useAuth from "../hooks/useAuth";
 import { logoutService } from "../services/authService";
 import { ROUTES, ROLES } from "../utils/constants";
@@ -42,92 +41,155 @@ const Navbar = () => {
   };
 
   const navClass = scrolled
-    ? "bg-brand-700/95 shadow-sm backdrop-blur-lg"
+    ? "bg-brand-700/95 shadow-lg shadow-brand-900/20 backdrop-blur-xl"
     : "bg-transparent";
 
   return (
     <nav className={`fixed top-0 left-0 right-0 z-50 border-b border-white/10 transition-all duration-300 ${navClass}`}>
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 md:px-8 md:py-4">
-        <Link to={ROUTES.HOME} className="text-xl font-bold tracking-tight text-white md:text-2xl">
-          Future Bin
+        <Link to={ROUTES.HOME} className="flex items-center gap-2 group">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/15 transition group-hover:bg-white/25 group-hover:scale-105">
+            <FaLeaf className="h-4 w-4 text-white" />
+          </div>
+          <span className="text-xl font-extrabold tracking-tight text-white md:text-2xl">
+            Future<span className="text-brand-200">Bin</span>
+          </span>
         </Link>
 
-        <div className="hidden items-center gap-6 md:flex">
-          <Link to={ROUTES.HOME} className="text-sm font-medium text-white/80 transition hover:text-white">
+        <div className="hidden items-center gap-1 md:flex">
+          <Link
+            to={ROUTES.HOME}
+            className="flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium text-white/80 transition hover:bg-white/10 hover:text-white"
+          >
+            <FaHome className="h-3.5 w-3.5" />
             Home
           </Link>
 
           {isAuthenticated ? (
             <>
-              <Link to={getDashboardRoute()} className="text-sm font-medium text-white/80 transition hover:text-white">
+              <Link
+                to={getDashboardRoute()}
+                className="flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium text-white/80 transition hover:bg-white/10 hover:text-white"
+              >
                 Dashboard
               </Link>
-              <span className="text-sm text-white/60">{user?.name}</span>
+              <div className="mx-1 h-4 w-px bg-white/20" />
+              <div className="flex items-center gap-2 rounded-full bg-white/10 pl-1 pr-3 py-1">
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-white/20 text-[11px] font-bold text-white">
+                  {user?.name?.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2) || "U"}
+                </div>
+                <span className="text-sm font-medium text-white/90">{user?.name?.split(" ")[0]}</span>
+              </div>
             </>
           ) : (
             <>
-              <Link to={ROUTES.LOGIN} className="text-sm font-medium text-white/80 transition hover:text-white">
+              <Link
+                to={ROUTES.LOGIN}
+                className="rounded-full px-4 py-2 text-sm font-medium text-white/80 transition hover:bg-white/10 hover:text-white"
+              >
                 Login
               </Link>
-              <Link to={ROUTES.REGISTER} className="text-sm font-medium text-white/80 transition hover:text-white">
-                Register
+              <Link
+                to={ROUTES.REGISTER}
+                className="rounded-full bg-white/15 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/25 hover:scale-[1.02]"
+              >
+                Get Started
               </Link>
             </>
           )}
 
           <button
             onClick={() => setDark(!dark)}
-            className="rounded-lg p-2 text-white/60 transition hover:bg-white/10 hover:text-white"
+            className="ml-1 rounded-full p-2 text-white/50 transition hover:bg-white/10 hover:text-white"
             aria-label="Toggle dark mode"
           >
-            {dark ? <FaSun size={16} /> : <FaMoon size={16} />}
+            {dark ? <FaSun size={15} /> : <FaMoon size={15} />}
           </button>
 
           {isAuthenticated && (
-            <Button variant="danger" size="sm" onClick={handleLogout}>
-              Logout
-            </Button>
+            <button
+              onClick={handleLogout}
+              className="ml-1 flex items-center gap-1.5 rounded-full p-2 text-white/50 transition hover:bg-red-500/20 hover:text-red-300"
+              title="Logout"
+            >
+              <FaSignOutAlt size={14} />
+            </button>
           )}
         </div>
 
         <div className="flex items-center gap-2 md:hidden">
           <button
             onClick={() => setDark(!dark)}
-            className="rounded-lg p-2 text-white/60 transition hover:bg-white/10 hover:text-white"
+            className="rounded-full p-2 text-white/50 transition hover:bg-white/10 hover:text-white"
             aria-label="Toggle dark mode"
           >
             {dark ? <FaSun size={16} /> : <FaMoon size={16} />}
           </button>
-          <button onClick={() => setMobileOpen(!mobileOpen)} className="text-white" aria-label="Toggle navigation menu">
-            {mobileOpen ? <FaTimes size={22} /> : <FaBars size={22} />}
+          <button
+            onClick={() => setMobileOpen(!mobileOpen)}
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20"
+            aria-label="Toggle navigation menu"
+          >
+            {mobileOpen ? <FaTimes size={18} /> : <FaBars size={18} />}
           </button>
         </div>
       </div>
 
       {mobileOpen && (
-        <div className="space-y-3 border-t border-white/10 bg-brand-700/95 px-4 pb-5 pt-3 backdrop-blur-lg md:hidden">
-          <Link to={ROUTES.HOME} className="block text-sm font-medium text-white/80 hover:text-white" onClick={() => setMobileOpen(false)}>
-            Home
-          </Link>
+        <div className="border-t border-white/10 bg-brand-700/95 backdrop-blur-xl md:hidden">
+          <div className="space-y-1 px-4 py-3">
+            <Link
+              to={ROUTES.HOME}
+              className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-white/80 transition hover:bg-white/10 hover:text-white"
+              onClick={() => setMobileOpen(false)}
+            >
+              <FaHome className="h-4 w-4" /> Home
+            </Link>
 
-          {isAuthenticated ? (
-            <>
-              <Link to={getDashboardRoute()} className="block text-sm font-medium text-white/80 hover:text-white" onClick={() => setMobileOpen(false)}>
-                Dashboard
-              </Link>
-              <span className="block text-sm text-white/60">{user?.name}</span>
-              <Button variant="danger" size="sm" onClick={handleLogout}>Logout</Button>
-            </>
-          ) : (
-            <>
-              <Link to={ROUTES.LOGIN} className="block text-sm font-medium text-white/80 hover:text-white" onClick={() => setMobileOpen(false)}>
-                Sign In
-              </Link>
-              <Link to={ROUTES.REGISTER} className="block text-sm font-medium text-white/80 hover:text-white" onClick={() => setMobileOpen(false)}>
-                Get Started
-              </Link>
-            </>
-          )}
+            {isAuthenticated ? (
+              <>
+                <Link
+                  to={getDashboardRoute()}
+                  className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-white/80 transition hover:bg-white/10 hover:text-white"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  Dashboard
+                </Link>
+                <div className="flex items-center gap-3 rounded-xl bg-white/10 px-4 py-3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-xs font-bold text-white">
+                    {user?.name?.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2) || "U"}
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-white">{user?.name}</p>
+                    <p className="text-xs text-white/50 capitalize">{user?.role}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => { handleLogout(); setMobileOpen(false); }}
+                  className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-red-300 transition hover:bg-red-500/20"
+                >
+                  <FaSignOutAlt className="h-4 w-4" /> Logout
+                </button>
+              </>
+            ) : (
+              <>
+                <Link
+                  to={ROUTES.LOGIN}
+                  className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-white/80 transition hover:bg-white/10 hover:text-white"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  Sign In
+                </Link>
+                <Link
+                  to={ROUTES.REGISTER}
+                  className="flex items-center justify-center gap-2 rounded-xl bg-white/15 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/25"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  Get Started
+                </Link>
+              </>
+            )}
+          </div>
         </div>
       )}
     </nav>

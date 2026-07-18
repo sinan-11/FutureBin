@@ -31,6 +31,15 @@ export const hasActivePickup = async (collectorId) => {
   return count > 0;
 };
 
+export const getActivePickupForCollector = async (collectorId) => {
+  const pickup = await PickupRequest.findOne({
+    collector: collectorId,
+    status: { $in: ["accepted", "collector_arrived"] },
+  }).populate("resident", "_id");
+
+  return pickup;
+};
+
 const STATUS_TIMESTAMPS = {
   accepted: "acceptedAt",
   collector_arrived: "arrivedAt",

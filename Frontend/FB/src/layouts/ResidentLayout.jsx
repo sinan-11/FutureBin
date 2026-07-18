@@ -1,4 +1,4 @@
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { FaSignOutAlt, FaPlus, FaList, FaTachometerAlt, FaArrowLeft, FaWallet } from "react-icons/fa";
 import { toast } from "react-toastify";
 
@@ -34,29 +34,26 @@ const ResidentLayout = ({ children, userName }) => {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20 md:pb-0">
-      <header className="sticky top-0 z-30 border-b border-gray-100 bg-white/80 shadow-sm backdrop-blur-xl">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
+      <header className="sticky top-0 z-30 bg-brand-700/95 backdrop-blur-lg border-b border-white/10">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3 md:px-8 md:py-4">
           <div className="flex items-center gap-3">
             {!isDashboard && (
               <button
                 onClick={() => navigate(ROUTES.RESIDENT_DASHBOARD)}
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 transition hover:bg-gray-200 active:scale-90"
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 transition hover:bg-white/20 active:scale-90"
               >
-                <FaArrowLeft className="h-4 w-4 text-gray-600" />
+                <FaArrowLeft className="h-4 w-4 text-white" />
               </button>
             )}
-            <h1
-              className="cursor-pointer text-lg font-bold text-gray-800"
-              onClick={() => navigate(ROUTES.RESIDENT_DASHBOARD)}
-            >
-              {isDashboard ? "Future Bin" : PAGE_TITLES[location.pathname] || "Resident"}
-            </h1>
+            <Link to={ROUTES.HOME} className="text-xl font-bold tracking-tight text-white">
+              Future Bin
+            </Link>
           </div>
           <div className="flex items-center gap-2">
             {userName && (
-              <span className="hidden text-sm font-medium text-gray-500 sm:block">{userName}</span>
+              <span className="hidden text-sm font-medium text-white/80 sm:block">{userName}</span>
             )}
-            <Button variant="ghost" size="sm" icon={FaSignOutAlt} onClick={handleLogout}>Logout</Button>
+            <Button variant="ghost" size="sm" icon={FaSignOutAlt} onClick={handleLogout} className="!text-white/80 hover:!bg-white/10 hover:!text-white">Logout</Button>
           </div>
         </div>
       </header>

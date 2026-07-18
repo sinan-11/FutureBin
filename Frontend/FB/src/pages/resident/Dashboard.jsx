@@ -1,18 +1,22 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import {
   FaRecycle, FaPlus, FaTrashAlt, FaTruck, FaWeight,
   FaMoneyBillWave, FaMapMarkerAlt, FaCheckCircle,
-  FaTimesCircle, FaHourglass, FaHome, FaWallet, FaKey,
+  FaTimesCircle, FaHourglass, FaHome, FaWallet, FaKey, FaMap, FaLeaf, FaSignOutAlt,
 } from "react-icons/fa";
 import { toast } from "react-toastify";
 
 import useAuth from "../../hooks/useAuth";
 import useSocket from "../../hooks/useSocket";
 import { getMyPickupsService, cancelPickupService, getPickupOtpService } from "../../services/pickupService";
+import { logoutService } from "../../services/authService";
 import { ROUTES } from "../../utils/constants";
 import { getErrorMessage, formatDateTime, capitalize } from "../../utils/helpers";
+import { isValidCoordinates } from "../../utils/map";
+import { playNotificationSound } from "../../utils/sound";
 import WalletPanel from "../../components/WalletPanel";
+import LiveCollectorTracker from "../../components/map/LiveCollectorTracker";
 
 const STATUS_BADGES = {
   broadcasting: { label: "Finding Collector", color: "bg-blue-100 text-blue-700", icon: FaHourglass },
@@ -110,11 +114,19 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const pollRef = useRef(null);
   const pollTimeoutRef = useRef(null);
+  const debounceTimerRef = useRef(null);
+  const lastFetchRef = useRef(0);
+  const activeRequestRef = useRef(null);
+  const doFetchRouteRef = useRef(null);
+  const nearbyNotifiedRef = useRef(new Set());
 
   const [requests, setRequests] = useState({ current: [], completed: [], cancelled: [] });
   const [cancelling, setCancelling] = useState(null);
   const [showWallet, setShowWallet] = useState(false);
   const [otpModal, setOtpModal] = useState(null);
+  const [collectorLocation, setCollectorLocation] = useState(null);
+  const [showTracker, setShowTracker] = useState(false);
+  const [routeData, setRouteData] = useState(null);
 
   const loadRequests = useCallback(async () => {
     try {
@@ -122,6 +134,64 @@ const Dashboard = () => {
       setRequests(data);
     } catch { /* silent */ }
   }, []);
+
+  const fetchRouteBetween = useCallback(async (fromCoords, toCoords) => {
+    try {
+      const from = [fromCoords[1], fromCoords[0]];
+      const to = [toCoords[1], toCoords[0]];
+      const url = `https://router.project-osrm.org/route/v1/driving/${from[1]},${from[0]};${to[1]},${to[0]}?overview=full&geometries=geojson`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (!data.routes || data.routes.length === 0) return null;
+      const route = data.routes[0];
+      return {
+        distance: (route.distance / 1000).toFixed(1),
+        duration: Math.ceil(route.duration / 60),
+        durationSec: route.duration,
+        geometry: route.geometry.coordinates.map(([lng, lat]) => [lat, lng]),
+      };
+    } catch (error) {
+      console.error("[TRACKING] fetchRouteBetween failed:", error);
+      return null;
+    }
+  }, []);
+
+  doFetchRouteRef.current = async (collectorLoc, pickupCoords) => {
+    const now = Date.now();
+    if (now - lastFetchRef.current < 5000) return;
+    lastFetchRef.current = now;
+
+    const result = await fetchRouteBetween(
+      [collectorLoc.longitude, collectorLoc.latitude],
+      pickupCoords
+    );
+
+    if (result) {
+      setRouteData(result);
+
+      if (result.durationSec <= 300 && activeRequestRef.current) {
+        const pickupId = activeRequestRef.current._id;
+        if (!nearbyNotifiedRef.current.has(pickupId)) {
+          nearbyNotifiedRef.current.add(pickupId);
+          toast.info(
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-100">
+                <FaTruck className="h-5 w-5 text-brand-600" />
+              </div>
+              <div>
+                <p className="font-semibold text-gray-800">Collector is almost here!</p>
+                <p className="text-sm text-gray-500">ETA: {result.duration} min</p>
+              </div>
+            </div>,
+            { autoClose: 8000 }
+          );
+          playNotificationSound();
+        }
+      }
+    } else {
+      console.error("[TRACKING] Route fetch returned null, keeping previous routeData");
+    }
+  };
 
   const startPolling = useCallback(() => {
     if (!pollRef.current) {
@@ -149,8 +219,29 @@ const Dashboard = () => {
 
       "collector-arrived": useCallback((data) => {
         toast.info("Collector has arrived!");
+        setCollectorLocation(null);
+        setRouteData(null);
         loadRequests();
       }, [loadRequests]),
+
+      "collector-location": useCallback((data) => {
+        const { pickupId, location } = data;
+        const current = activeRequestRef.current;
+        if (!current || current._id !== pickupId) return;
+
+        setCollectorLocation(location);
+
+        if (debounceTimerRef.current) {
+          clearTimeout(debounceTimerRef.current);
+        }
+
+        debounceTimerRef.current = setTimeout(() => {
+          const pickupCoords = current.location?.coordinates;
+          if (pickupCoords && doFetchRouteRef.current) {
+            doFetchRouteRef.current(location, pickupCoords);
+          }
+        }, 5000);
+      }, []),
 
       "otp-generated": useCallback((data) => {
         toast.success("Weight verified! OTP sent to your email.");
@@ -212,6 +303,30 @@ const Dashboard = () => {
     return () => stopPolling();
   }, [isConnected, startPolling, stopPolling]);
 
+  useEffect(() => {
+    const current = requests.current[0];
+    activeRequestRef.current = current;
+
+    if (!current || current.status === "completed" || current.status === "cancelled" || current.status === "expired") {
+      setCollectorLocation(null);
+      setRouteData(null);
+      setShowTracker(false);
+      nearbyNotifiedRef.current.clear();
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = null;
+      }
+    }
+  }, [requests]);
+
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
+
   const handleCancel = async (id) => {
     setCancelling(id);
     try {
@@ -225,40 +340,54 @@ const Dashboard = () => {
     }
   };
 
+  const handleLogout = async () => {
+    await logoutService();
+    toast.success("Logged out");
+    navigate(ROUTES.HOME, { replace: true });
+  };
+
   const activeRequest = requests.current[0];
 
   return (
     <div className="min-h-screen bg-gray-50">
       {/* ─── Top Bar ─── */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="mx-auto flex max-w-2xl items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-brand-600 text-white font-bold text-sm">
-              {user?.name?.split(" ").map((n) => n[0]).join("").toUpperCase() || "R"}
+      <header className="bg-brand-700/95 shadow-lg shadow-brand-900/20 backdrop-blur-xl border-b border-white/10">
+        <div className="mx-auto flex max-w-2xl items-center justify-between px-4 py-3 md:px-8 md:py-4">
+          <Link to={ROUTES.HOME} className="flex items-center gap-2 group">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/15 transition group-hover:bg-white/25 group-hover:scale-105">
+              <FaLeaf className="h-4 w-4 text-white" />
             </div>
-            <div className="min-w-0">
-              <p className="font-bold text-gray-800 text-sm leading-tight truncate">{user?.name || "Resident"}</p>
-              <p className="text-xs text-gray-400">Resident</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-1.5 sm:gap-2">
-            <button
-              onClick={() => navigate(ROUTES.HOME)}
-              className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition"
+            <span className="text-xl font-extrabold tracking-tight text-white md:text-2xl">
+              Future<span className="text-brand-200">Bin</span>
+            </span>
+          </Link>
+          <div className="flex items-center gap-1 sm:gap-1.5">
+            <Link
+              to={ROUTES.HOME}
+              className="hidden sm:flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium text-white/80 transition hover:bg-white/10 hover:text-white"
             >
-              <FaHome className="h-4 w-4" />
+              <FaHome className="h-3.5 w-3.5" />
+              Home
+            </Link>
+            <button
+              onClick={() => navigate(ROUTES.RESIDENT_MY_REQUESTS)}
+              className="flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium text-white/80 transition hover:bg-white/10 hover:text-white"
+            >
+              Requests
             </button>
             <button
               onClick={() => setShowWallet(true)}
-              className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition"
+              className="flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium text-white/80 transition hover:bg-white/10 hover:text-white"
             >
-              Wallet
+              <FaWallet className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Wallet</span>
             </button>
             <button
-              onClick={() => navigate(ROUTES.RESIDENT_MY_REQUESTS)}
-              className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition"
+              onClick={handleLogout}
+              className="flex items-center gap-1.5 rounded-full p-2 text-white/50 transition hover:bg-red-500/20 hover:text-red-300"
+              title="Logout"
             >
-              Requests
+              <FaSignOutAlt size={14} />
             </button>
           </div>
         </div>
@@ -357,8 +486,29 @@ const Dashboard = () => {
                     {cancelling === activeRequest._id ? "Cancelling..." : "Cancel Request"}
                   </button>
                 )}
+                {activeRequest.status === "accepted" && collectorLocation && (
+                  <button
+                    onClick={() => setShowTracker((prev) => !prev)}
+                    className="w-full rounded-xl bg-brand-50 border-2 border-brand-200 py-2.5 text-sm font-bold text-brand-700 hover:bg-brand-100 transition"
+                  >
+                    <span className="flex items-center justify-center gap-2">
+                      <FaMap className="h-4 w-4" />
+                      {showTracker ? "Hide Map" : "Track on Map"}
+                    </span>
+                  </button>
+                )}
               </div>
             </div>
+
+            {showTracker && activeRequest.status === "accepted" && (
+              <div className="mt-3">
+                <LiveCollectorTracker
+                  pickup={activeRequest}
+                  collectorLocation={collectorLocation}
+                  routeData={routeData}
+                />
+              </div>
+            )}
           </section>
         ) : (
           /* ─── No active request ─── */

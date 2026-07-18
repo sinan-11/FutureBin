@@ -58,17 +58,17 @@ const AdminLayout = ({ children, title }) => {
 
   return (
     <div className="flex min-h-screen bg-surface-50">
-      <aside className="hidden w-64 flex-col bg-brand-700 md:flex">{sidebarContent}</aside>
+      <aside className="hidden w-64 flex-col bg-brand-700/95 backdrop-blur-lg md:flex">{sidebarContent}</aside>
 
       {sidebarOpen && (
         <div className="fixed inset-0 z-50 md:hidden">
           <div className="absolute inset-0 bg-black/50" onClick={() => setSidebarOpen(false)} />
-          <aside className="relative flex w-64 flex-col bg-brand-700">{sidebarContent}</aside>
+          <aside className="relative flex w-64 flex-col bg-brand-700/95 backdrop-blur-lg">{sidebarContent}</aside>
         </div>
       )}
 
       <main className="flex-1">
-        <div className="flex items-center gap-3 border-b border-white/10 bg-brand-700 px-4 py-3 text-white md:hidden">
+        <div className="flex items-center gap-3 border-b border-white/10 bg-brand-700/95 backdrop-blur-lg px-4 py-3 text-white md:hidden">
           <button onClick={() => setSidebarOpen(true)} aria-label="Open sidebar"><FaBars size={20} /></button>
           <h1 className="text-lg font-bold">Future Bin Admin</h1>
         </div>

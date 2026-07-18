@@ -1,5 +1,6 @@
 import { Server } from "socket.io";
 import jwt from "jsonwebtoken";
+import { getActivePickupForCollector } from "../services/pickupService.js";
 
 let io = null;
 
@@ -54,6 +55,30 @@ export const initSocket = (server) => {
       }
       residentSockets.get(userId).add(socket.id);
       console.log(`[SOCKET] Resident ${userId} now has ${residentSockets.get(userId).size} socket(s)`);
+    }
+
+    if (userRole === "collector") {
+      socket.on("collector-location-update", async (data) => {
+        try {
+          const { pickupId, latitude, longitude } = data;
+
+          if (!pickupId || latitude == null || longitude == null) return;
+
+          const pickup = await getActivePickupForCollector(userId);
+
+          if (!pickup || String(pickup._id) !== String(pickupId)) return;
+
+          const residentId = pickup.resident?._id;
+          if (!residentId) return;
+
+          notifyResidentById(String(residentId), "collector-location", {
+            pickupId: pickup._id,
+            location: { latitude, longitude },
+          });
+        } catch (error) {
+          console.error(`[SOCKET] collector-location-update error: ${error.message}`);
+        }
+      });
     }
 
     socket.on("disconnect", () => {

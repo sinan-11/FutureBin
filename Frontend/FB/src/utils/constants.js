@@ -85,6 +85,10 @@ export const API_ENDPOINTS = {
   WALLET_ME: "/wallet/me",
   WALLET_TRANSACTIONS: "/wallet/transactions",
 
+  // Chat
+  CHAT_MESSAGES: (pickupId) => `/chat/${pickupId}/messages`,
+  CHAT_READ: (pickupId) => `/chat/${pickupId}/read`,
+
   // Settings
   GET_SETTINGS: "/settings",
   UPDATE_SETTINGS: "/settings/bulk",

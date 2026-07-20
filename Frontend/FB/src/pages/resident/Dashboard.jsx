@@ -3,7 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import {
   FaRecycle, FaPlus, FaTrashAlt, FaTruck, FaWeight,
   FaMoneyBillWave, FaMapMarkerAlt, FaCheckCircle,
-  FaTimesCircle, FaHourglass, FaHome, FaWallet, FaKey, FaMap, FaLeaf, FaSignOutAlt,
+  FaTimesCircle, FaHourglass, FaHome, FaWallet, FaKey, FaMap, FaComments, FaLeaf, FaSignOutAlt,
 } from "react-icons/fa";
 import { toast } from "react-toastify";
 
@@ -17,6 +17,7 @@ import { isValidCoordinates } from "../../utils/map";
 import { playNotificationSound } from "../../utils/sound";
 import WalletPanel from "../../components/WalletPanel";
 import LiveCollectorTracker from "../../components/map/LiveCollectorTracker";
+import ChatPanel from "../../components/ChatPanel";
 
 const STATUS_BADGES = {
   broadcasting: { label: "Finding Collector", color: "bg-blue-100 text-blue-700", icon: FaHourglass },
@@ -127,6 +128,7 @@ const Dashboard = () => {
   const [collectorLocation, setCollectorLocation] = useState(null);
   const [showTracker, setShowTracker] = useState(false);
   const [routeData, setRouteData] = useState(null);
+  const [chatOpen, setChatOpen] = useState(false);
 
   const loadRequests = useCallback(async () => {
     try {
@@ -210,7 +212,7 @@ const Dashboard = () => {
     }
   }, []);
 
-  const { isConnected } = useSocket({
+  const { socketRef, isConnected } = useSocket({
     residentEvents: {
       "pickup-accepted": useCallback((data) => {
         toast.info("Collector accepted your pickup!");
@@ -221,6 +223,7 @@ const Dashboard = () => {
         toast.info("Collector has arrived!");
         setCollectorLocation(null);
         setRouteData(null);
+        setShowTracker(false);
         loadRequests();
       }, [loadRequests]),
 
@@ -311,6 +314,7 @@ const Dashboard = () => {
       setCollectorLocation(null);
       setRouteData(null);
       setShowTracker(false);
+      setChatOpen(false);
       nearbyNotifiedRef.current.clear();
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current);
@@ -497,6 +501,17 @@ const Dashboard = () => {
                     </span>
                   </button>
                 )}
+                {["accepted", "collector_arrived", "weight_verified"].includes(activeRequest.status) && activeRequest.collector && (
+                  <button
+                    onClick={() => setChatOpen((prev) => !prev)}
+                    className="w-full rounded-xl bg-brand-50 border-2 border-brand-200 py-2.5 text-sm font-bold text-brand-700 hover:bg-brand-100 transition"
+                  >
+                    <span className="flex items-center justify-center gap-2">
+                      <FaComments className="h-4 w-4" />
+                      {chatOpen ? "Close Chat" : "Chat with Collector"}
+                    </span>
+                  </button>
+                )}
               </div>
             </div>
 
@@ -507,6 +522,12 @@ const Dashboard = () => {
                   collectorLocation={collectorLocation}
                   routeData={routeData}
                 />
+              </div>
+            )}
+
+            {chatOpen && activeRequest.collector && (
+              <div className="mt-3">
+                <ChatPanel pickup={activeRequest} socketRef={socketRef} onClose={() => setChatOpen(false)} />
               </div>
             )}
           </section>

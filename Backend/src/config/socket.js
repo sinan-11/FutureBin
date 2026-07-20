@@ -1,6 +1,7 @@
 import { Server } from "socket.io";
 import jwt from "jsonwebtoken";
 import { getActivePickupForCollector } from "../services/pickupService.js";
+import { sendMessage, markAsRead } from "../services/chatService.js";
 
 let io = null;
 
@@ -80,6 +81,65 @@ export const initSocket = (server) => {
         }
       });
     }
+
+    socket.on("chat-message", async (data) => {
+      try {
+        const { pickupId, message } = data;
+
+        if (!pickupId || !message || !message.trim()) return;
+
+        const PickupRequest = (await import("../models/PickupRequest.js")).default;
+        const pickupDoc = await PickupRequest.findById(pickupId).select("resident collector status");
+
+        if (!pickupDoc) {
+          socket.emit("chat-error", { message: "Pickup not found" });
+          return;
+        }
+
+        const isResident = String(pickupDoc.resident) === String(userId);
+        const isCollector = pickupDoc.collector && String(pickupDoc.collector) === String(userId);
+
+        if (!isResident && !isCollector) {
+          socket.emit("chat-error", { message: "You are not a participant" });
+          return;
+        }
+
+        const receiverId = isResident ? pickupDoc.collector : pickupDoc.resident;
+
+        const chatMessage = await sendMessage(
+          pickupId,
+          userId,
+          receiverId,
+          message.trim()
+        );
+
+        if (pickupDoc.resident && pickupDoc.collector) {
+          notifyPickupParticipants(
+            String(pickupDoc.resident),
+            String(pickupDoc.collector),
+            "chat-message",
+            { message: chatMessage }
+          );
+        }
+      } catch (error) {
+        console.error(`[SOCKET] chat-message error: ${error.message}`);
+        socket.emit("chat-error", { message: error.message });
+      }
+    });
+
+    socket.on("chat-read", async (data) => {
+      try {
+        const { pickupId } = data;
+
+        if (!pickupId) return;
+
+        const count = await markAsRead(pickupId, userId);
+
+        socket.emit("chat-read-ack", { pickupId, modifiedCount: count });
+      } catch (error) {
+        console.error(`[SOCKET] chat-read error: ${error.message}`);
+      }
+    });
 
     socket.on("disconnect", () => {
       console.log(`[SOCKET] Disconnected: ${socket.id}`);

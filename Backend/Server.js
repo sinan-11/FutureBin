@@ -14,6 +14,7 @@ import userRoutes from "./src/routes/userRoutes.js";
 import pickupRoutes from "./src/routes/pickupRoutes.js";
 import walletRoutes from "./src/routes/walletRoutes.js";
 import settingRoutes from "./src/routes/settingRoutes.js";
+import chatRoutes from "./src/routes/chatRoutes.js";
 import { seedSettings } from "./src/services/settingService.js";
 
 connectDB().then(() => seedSettings());
@@ -46,6 +47,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/pickup-requests", pickupRoutes);
 app.use("/api/wallet", walletRoutes);
 app.use("/api/settings", settingRoutes);
+app.use("/api/chat", chatRoutes);
 
 // 404 Handler
 app.use((req, res) => {

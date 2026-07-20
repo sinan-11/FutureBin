@@ -7,6 +7,7 @@ import {
   FaCalendarAlt,
   FaMap,
   FaInfoCircle,
+  FaComments,
   FaLeaf, FaSignOutAlt,
 } from "react-icons/fa";
 import { toast } from "react-toastify";
@@ -36,6 +37,7 @@ import { playNotificationSound } from "../../utils/sound";
 import WalletPanel from "../../components/WalletPanel";
 import PickupRouteMap from "../../components/map/PickupRouteMap";
 import OtpInput from "../../components/OtpInput";
+import ChatPanel from "../../components/ChatPanel";
 
 const POLL_INTERVAL = 10000;
 const POLL_FALLBACK_DELAY = 5000;
@@ -71,6 +73,7 @@ const Dashboard = () => {
   const [otpInput, setOtpInput] = useState("");
   const [mapOpen, setMapOpen] = useState(null);
   const [locationError, setLocationError] = useState(null);
+  const [chatOpen, setChatOpen] = useState(null);
 
   const loadProfile = useCallback(async () => {
     try {
@@ -343,6 +346,7 @@ const Dashboard = () => {
     try {
       await arriveAtPickupService(id);
       toast.success("Arrival confirmed");
+      setMapOpen(null);
       loadData();
     } catch (error) {
       toast.error(getErrorMessage(error));
@@ -738,9 +742,18 @@ const Dashboard = () => {
                       </div>
                     </div>
 
-                    {/* Map Toggle */}
-                    {req.location?.coordinates && (
-                      <div className="mt-3 pt-3 border-t border-gray-100">
+                    {/* Chat + Map Toggle */}
+                    <div className="mt-3 pt-3 border-t border-gray-100 flex items-center gap-4">
+                      {["accepted", "collector_arrived", "weight_verified"].includes(req.status) && (
+                        <button
+                          onClick={() => setChatOpen(req._id === chatOpen ? null : req._id)}
+                          className="flex items-center gap-1.5 text-xs font-medium text-brand-600 hover:text-brand-700 transition"
+                        >
+                          <FaComments className="h-3 w-3" />
+                          {chatOpen === req._id ? "Close Chat" : "Chat"}
+                        </button>
+                      )}
+                      {req.location?.coordinates && (
                         <button
                           onClick={() => toggleMap(`active-${req._id}`)}
                           className="flex items-center gap-1.5 text-xs font-medium text-brand-600 hover:text-brand-700 transition"
@@ -748,9 +761,14 @@ const Dashboard = () => {
                           <FaMap className="h-3 w-3" />
                           {mapOpen === `active-${req._id}` ? "Hide Map" : "View Map"}
                         </button>
-                        {mapOpen === `active-${req._id}` && (
-                          <PickupRouteMap pickup={req} collectorLocation={profile.location} />
-                        )}
+                      )}
+                    </div>
+                    {chatOpen === req._id && (
+                      <ChatPanel pickup={req} socketRef={socketRef} onClose={() => setChatOpen(null)} />
+                    )}
+                    {mapOpen === `active-${req._id}` && req.location?.coordinates && (
+                      <div className="mt-3">
+                        <PickupRouteMap pickup={req} collectorLocation={profile.location} />
                       </div>
                     )}
                   </div>

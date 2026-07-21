@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import {
   FaTimes,
   FaPaperPlane,
+  FaCheck,
   FaCheckDouble,
 } from "react-icons/fa";
 import useAuth from "../hooks/useAuth";
@@ -37,6 +38,8 @@ const ChatPanel = ({ pickup, socketRef, onClose }) => {
   const inputRef = useRef(null);
   const messagesContainerRef = useRef(null);
   const isNearBottomRef = useRef(true);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   const pickupId = pickup?._id;
   const isChatActive = CHAT_ACTIVE_STATUSES.includes(pickup?.status);
@@ -103,11 +106,11 @@ const ChatPanel = ({ pickup, socketRef, onClose }) => {
     );
 
     if (hasUnread && pickupId) {
-      markChatReadService(pickupId).catch(() => {});
-
       const socket = socketRef?.current;
       if (socket?.connected) {
         socket.emit("chat-read", { pickupId });
+      } else {
+        markChatReadService(pickupId).catch(() => {});
       }
     }
   }, [messages, loading, user?._id, pickupId, socketRef]);
@@ -124,8 +127,11 @@ const ChatPanel = ({ pickup, socketRef, onClose }) => {
         });
 
         if (data.message.receiverId === user?._id && pickupId) {
-          markChatReadService(pickupId).catch(() => {});
-          socket.emit("chat-read", { pickupId });
+          if (socket?.connected) {
+            socket.emit("chat-read", { pickupId });
+          } else {
+            markChatReadService(pickupId).catch(() => {});
+          }
         }
       }
     };
@@ -134,12 +140,33 @@ const ChatPanel = ({ pickup, socketRef, onClose }) => {
       console.warn("[CHAT] Server error:", data.message);
     };
 
+    const handleChatClosed = (data) => {
+      if (data?.pickupId === pickupId) {
+        setMessages([]);
+        onCloseRef.current();
+      }
+    };
+
+    const handleMessagesRead = (data) => {
+      if (data?.pickupId === pickupId) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.senderId === user?._id ? { ...m, read: true } : m
+          )
+        );
+      }
+    };
+
     socket.on("chat-message", handleNewMessage);
     socket.on("chat-error", handleError);
+    socket.on("chat-closed", handleChatClosed);
+    socket.on("messages-read", handleMessagesRead);
 
     return () => {
       socket.off("chat-message", handleNewMessage);
       socket.off("chat-error", handleError);
+      socket.off("chat-closed", handleChatClosed);
+      socket.off("messages-read", handleMessagesRead);
     };
   }, [socketRef, pickupId, user?._id]);
 
@@ -322,7 +349,11 @@ const ChatPanel = ({ pickup, socketRef, onClose }) => {
                               {formatTime(msg.createdAt)}
                             </span>
                             {isSent && (
-                              <FaCheckDouble className="h-3 w-3 text-white/70" />
+                              msg.read ? (
+                                <FaCheckDouble className="h-3 w-3 text-white/70" />
+                              ) : (
+                                <FaCheck className="h-3 w-3 text-white/70" />
+                              )
                             )}
                           </div>
                         </div>

@@ -436,7 +436,10 @@ export const verifyOtpHandler = async (req, res) => {
     notifyPickupParticipants(request.resident, req.user.id, "pickup-completed", {
       request,
     });
-    console.log(`[SOCKET] pickup-completed sent to resident ${request.resident} and collector ${req.user.id}`);
+    notifyPickupParticipants(request.resident, req.user.id, "chat-closed", {
+      pickupId: request._id,
+    });
+    console.log(`[SOCKET] pickup-completed + chat-closed sent to resident ${request.resident} and collector ${req.user.id}`);
 
     res.status(200).json({
       success: true,

@@ -136,6 +136,23 @@ export const initSocket = (server) => {
         const count = await markAsRead(pickupId, userId);
 
         socket.emit("chat-read-ack", { pickupId, modifiedCount: count });
+
+        if (count > 0) {
+          const PickupRequest = (await import("../models/PickupRequest.js")).default;
+          const pickup = await PickupRequest.findById(pickupId).select("resident collector");
+          if (pickup) {
+            const senderId = String(pickup.resident) === userId
+              ? String(pickup.collector)
+              : String(pickup.resident);
+            const senderRole = String(pickup.resident) === userId ? "collector" : "resident";
+
+            if (senderRole === "collector") {
+              notifyCollectorById(senderId, "messages-read", { pickupId });
+            } else {
+              notifyResidentById(senderId, "messages-read", { pickupId });
+            }
+          }
+        }
       } catch (error) {
         console.error(`[SOCKET] chat-read error: ${error.message}`);
       }

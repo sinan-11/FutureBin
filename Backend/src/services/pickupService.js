@@ -3,6 +3,7 @@ import PickupRequest from "../models/PickupRequest.js";
 import User from "../models/User.js";
 import { sendPickupOtp, sendPickupCompletedToResident, sendPickupCompletedToCollector } from "../utils/sendEmail.js";
 import { getWastePrices } from "./settingService.js";
+import { deleteMessagesByPickup } from "./chatService.js";
 
 const SEARCH_RADIUS = Number(process.env.PICKUP_SEARCH_RADIUS) || 5000;
 const EXPIRY_MINUTES = Number(process.env.PICKUP_EXPIRY_MINUTES) || 30;
@@ -585,6 +586,12 @@ export const verifyCompletionOtp = async (requestId, collectorId, otp) => {
     }
   } catch (e) {
     console.error("Failed to send completion emails:", e);
+  }
+
+  try {
+    await deleteMessagesByPickup(requestId);
+  } catch (e) {
+    console.error(`[CHAT] Failed to delete messages for pickup ${requestId}:`, e.message);
   }
 
   return await PickupRequest.findById(requestId);

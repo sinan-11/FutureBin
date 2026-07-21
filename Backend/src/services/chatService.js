@@ -79,3 +79,8 @@ export const markAsRead = async (pickupId, userId) => {
 
   return result.modifiedCount;
 };
+
+export const deleteMessagesByPickup = async (pickupId) => {
+  const result = await ChatMessage.deleteMany({ pickupId });
+  return result.deletedCount;
+};

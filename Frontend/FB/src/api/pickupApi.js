@@ -42,3 +42,12 @@ export const regenerateOtp = (id) =>
 
 export const verifyOtp = (id, otp) =>
   axiosInstance.patch(API_ENDPOINTS.VERIFY_OTP(id), { otp });
+
+export const confirmCash = (id) =>
+  axiosInstance.patch(API_ENDPOINTS.CONFIRM_CASH(id));
+
+export const confirmExtraPayment = (id, paymentData) =>
+  axiosInstance.post(API_ENDPOINTS.CONFIRM_EXTRA_PAYMENT(id), paymentData);
+
+export const payExtraWallet = (id) =>
+  axiosInstance.post(API_ENDPOINTS.PAY_EXTRA_WALLET(id));

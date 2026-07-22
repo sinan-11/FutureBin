@@ -9,10 +9,10 @@ import { toast } from "react-toastify";
 
 import useAuth from "../../hooks/useAuth";
 import useSocket from "../../hooks/useSocket";
-import { getMyPickupsService, cancelPickupService, getPickupOtpService } from "../../services/pickupService";
+import { getMyPickupsService, cancelPickupService, getPickupOtpService, confirmExtraPaymentService, payExtraWalletService } from "../../services/pickupService";
 import { logoutService } from "../../services/authService";
 import { ROUTES } from "../../utils/constants";
-import { getErrorMessage, formatDateTime, capitalize } from "../../utils/helpers";
+import { getErrorMessage, formatDateTime, capitalize, formatCurrency } from "../../utils/helpers";
 import { isValidCoordinates } from "../../utils/map";
 import { playNotificationSound } from "../../utils/sound";
 import WalletPanel from "../../components/WalletPanel";
@@ -53,6 +53,112 @@ const ProgressBar = ({ currentStatus }) => {
 
 const POLL_INTERVAL = 10000;
 const POLL_FALLBACK_DELAY = 5000;
+
+const ExtraPaymentModal = ({ request, onClose, onSuccess }) => {
+  const [paying, setPaying] = useState(false);
+  const [method, setMethod] = useState(null);
+
+  const handlePayFromWallet = async () => {
+    setPaying(true);
+    setMethod("wallet");
+    try {
+      await payExtraWalletService(request._id);
+      toast.success("Extra payment deducted from wallet. OTP sent.");
+      onSuccess();
+    } catch (err) {
+      const msg = err?.response?.data?.message || err?.message || "Payment failed";
+      toast.error(msg);
+    } finally {
+      setPaying(false);
+      setMethod(null);
+    }
+  };
+
+  const handlePayFromRazorpay = async () => {
+    if (!request.extraPaymentOrderId || !request.extraPaymentAmount || !request.razorpayKeyId) {
+      toast.error("Razorpay not available. Please try wallet payment.");
+      return;
+    }
+    setPaying(true);
+    setMethod("razorpay");
+
+    try {
+      const options = {
+        key: request.razorpayKeyId,
+        amount: Math.round(request.extraPaymentAmount * 100),
+        currency: "INR",
+        name: "Future Bin",
+        description: "Extra payment for pickup",
+        order_id: request.extraPaymentOrderId,
+        handler: async (response) => {
+          try {
+            await confirmExtraPaymentService(request._id, {
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+            });
+            toast.success("Payment verified! OTP has been sent.");
+            onSuccess();
+          } catch {
+            toast.error("Payment verification failed");
+          }
+        },
+        prefill: { name: "", email: "", contact: "" },
+        theme: { color: "#16a34a" },
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+    } catch (err) {
+      toast.error(err.message || "Payment failed");
+    } finally {
+      setPaying(false);
+      setMethod(null);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+      <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl animate-fade-in text-center">
+        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-orange-50">
+          <FaMoneyBillWave className="h-6 w-6 text-orange-600" />
+        </div>
+        <h3 className="text-lg font-bold text-gray-800 mb-2">Extra Payment Required</h3>
+        <p className="text-sm text-gray-500 mb-4">
+          The actual weight ({request.actualWeight}kg) exceeds the estimated weight. You need to pay an additional amount.
+        </p>
+        <div className="rounded-xl bg-gray-50 p-4 mb-4">
+          <p className="text-xs text-gray-400">Additional amount</p>
+          <p className="text-2xl font-bold text-gray-800">{formatCurrency(request.extraPaymentAmount)}</p>
+        </div>
+        <div className="flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 rounded-xl border border-gray-200 py-3 text-sm font-semibold text-gray-500 hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handlePayFromWallet}
+            disabled={paying}
+            className="flex-1 rounded-xl bg-green-600 py-3 text-sm font-bold text-white hover:bg-green-700 disabled:opacity-50"
+          >
+            {paying && method === "wallet" ? "Paying..." : "Pay from Wallet"}
+          </button>
+          {request.razorpayKeyId && request.extraPaymentOrderId && (
+            <button
+              onClick={handlePayFromRazorpay}
+              disabled={paying}
+              className="flex-1 rounded-xl bg-brand-600 py-3 text-sm font-bold text-white hover:bg-brand-700 disabled:opacity-50"
+            >
+              {paying && method === "razorpay" ? "Paying..." : "Pay Online"}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const OTPModal = ({ requestId, onClose }) => {
   const [otpData, setOtpData] = useState(null);
@@ -125,6 +231,7 @@ const Dashboard = () => {
   const [cancelling, setCancelling] = useState(null);
   const [showWallet, setShowWallet] = useState(false);
   const [otpModal, setOtpModal] = useState(null);
+  const [extraPaymentModal, setExtraPaymentModal] = useState(null);
   const [collectorLocation, setCollectorLocation] = useState(null);
   const [showTracker, setShowTracker] = useState(false);
   const [routeData, setRouteData] = useState(null);
@@ -281,6 +388,20 @@ const Dashboard = () => {
 
       "pickup-expired": useCallback((data) => {
         toast.warning("Pickup request expired.");
+        loadRequests();
+      }, [loadRequests]),
+
+      "extra-payment-required": useCallback((data) => {
+        toast.warning("Extra payment required for this pickup.");
+        loadRequests();
+        const req = data?.request;
+        if (req) {
+          setExtraPaymentModal(req);
+        }
+      }, [loadRequests]),
+
+      "cash-confirmed": useCallback((data) => {
+        toast.info("Collector confirmed cash received.");
         loadRequests();
       }, [loadRequests]),
     },
@@ -473,12 +594,20 @@ const Dashboard = () => {
                   <span className="flex items-center gap-1"><FaMoneyBillWave />₹{activeRequest.estimatedPrice}</span>
                 </div>
 
-                {activeRequest.status === "weight_verified" && (
+                {activeRequest.status === "weight_verified" && activeRequest.paymentStatus !== "awaiting_extra_payment" && (
                   <button
                     onClick={() => setOtpModal(activeRequest._id)}
                     className="w-full rounded-xl bg-amber-50 border-2 border-amber-200 py-2.5 text-sm font-bold text-amber-700 hover:bg-amber-100 transition"
                   >
                     <span className="flex items-center justify-center gap-2"><FaKey className="h-4 w-4" /> View OTP</span>
+                  </button>
+                )}
+                {activeRequest.paymentStatus === "awaiting_extra_payment" && (
+                  <button
+                    onClick={() => setExtraPaymentModal(activeRequest)}
+                    className="w-full rounded-xl bg-orange-50 border-2 border-orange-200 py-2.5 text-sm font-bold text-orange-700 hover:bg-orange-100 transition"
+                  >
+                    <span className="flex items-center justify-center gap-2"><FaMoneyBillWave className="h-4 w-4" /> Pay Extra {formatCurrency(activeRequest.extraPaymentAmount)}</span>
                   </button>
                 )}
                 {(activeRequest.status === "broadcasting" || activeRequest.status === "accepted") && (
@@ -570,6 +699,13 @@ const Dashboard = () => {
       </main>
 
       {otpModal && <OTPModal requestId={otpModal} onClose={() => setOtpModal(null)} />}
+      {extraPaymentModal && (
+        <ExtraPaymentModal
+          request={extraPaymentModal}
+          onClose={() => setExtraPaymentModal(null)}
+          onSuccess={() => { setExtraPaymentModal(null); loadRequests(); }}
+        />
+      )}
       {showWallet && <WalletPanel onClose={() => setShowWallet(false)} />}
     </div>
   );

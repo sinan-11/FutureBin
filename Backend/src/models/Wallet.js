@@ -15,6 +15,12 @@ const walletSchema = new mongoose.Schema(
       min: 0,
     },
 
+    heldBalance: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
     currency: {
       type: String,
       default: "INR",
@@ -29,6 +35,13 @@ const walletSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+walletSchema.virtual("availableBalance").get(function () {
+  return this.balance - this.heldBalance;
+});
+
+walletSchema.set("toJSON", { virtuals: true });
+walletSchema.set("toObject", { virtuals: true });
 
 const Wallet = mongoose.model("Wallet", walletSchema);
 

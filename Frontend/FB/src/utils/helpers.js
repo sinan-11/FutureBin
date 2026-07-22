@@ -124,3 +124,12 @@ export const formatCoordinates = (location) => {
 
   return `${lat}, ${lng}`;
 };
+
+// Format Currency
+export const formatCurrency = (amount, currency = "INR") => {
+  return Number(amount || 0).toLocaleString("en-IN", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 2,
+  });
+};

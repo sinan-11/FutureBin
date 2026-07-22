@@ -19,9 +19,10 @@ import {
   getAvailableRequests,
   updateRequestStatus,
   cancelRequest,
+  confirmCashReceived,
+  confirmExtraPayment,
+  payExtraFromWallet,
 } from "../services/pickupService.js";
-
-// ─── Create Pickup Request ────────────────────────────────────────────────────
 
 export const createRequest = async (req, res) => {
   try {
@@ -33,6 +34,7 @@ export const createRequest = async (req, res) => {
       description,
       images,
       scheduledAt,
+      paymentMethod,
     } = req.body;
 
     if (!wasteType) {
@@ -95,6 +97,13 @@ export const createRequest = async (req, res) => {
       });
     }
 
+    if (paymentMethod && !["wallet", "cash"].includes(paymentMethod)) {
+      return res.status(400).json({
+        success: false,
+        message: "Payment method must be 'wallet' or 'cash'",
+      });
+    }
+
     const result = await createPickupRequest(
       {
         wasteType,
@@ -104,6 +113,7 @@ export const createRequest = async (req, res) => {
         description,
         images,
         scheduledAt,
+        paymentMethod,
       },
       req.user.id
     );
@@ -112,7 +122,6 @@ export const createRequest = async (req, res) => {
       request: result.request,
       nearbyCollectors: result.nearbyCollectors,
     });
-    console.log(`[SOCKET] new-request broadcast to ${result.nearbyCollectors.length} nearby collector(s)`);
 
     res.status(201).json({
       success: true,
@@ -121,14 +130,22 @@ export const createRequest = async (req, res) => {
       nearbyCollectors: result.nearbyCollectors,
     });
   } catch (error) {
+    if (error.message === "INSUFFICIENT_BALANCE") {
+      return res.status(400).json({
+        success: false,
+        message: "Insufficient wallet balance. Please top up your wallet.",
+        code: "INSUFFICIENT_BALANCE",
+        available: error.available,
+        required: error.required,
+      });
+    }
+
     res.status(400).json({
       success: false,
       message: error.message,
     });
   }
 };
-
-// ─── Accept Pickup Request ────────────────────────────────────────────────────
 
 export const acceptRequest = async (req, res) => {
   try {
@@ -140,12 +157,10 @@ export const acceptRequest = async (req, res) => {
     notifyPickupParticipants(request.resident, req.user.id, "pickup-accepted", {
       request,
     });
-    console.log(`[SOCKET] pickup-accepted sent to resident ${request.resident}`);
 
     notifyCollectorById(req.user.id, "pickup-assigned", {
       request,
     });
-    console.log(`[SOCKET] pickup-assigned sent to collector ${req.user.id}`);
 
     res.status(200).json({
       success: true,
@@ -170,8 +185,6 @@ export const acceptRequest = async (req, res) => {
   }
 };
 
-// ─── Reject Pickup Request (Collector) ─────────────────────────────────────────
-
 export const rejectRequest = async (req, res) => {
   try {
     const request = await rejectPickupRequest(
@@ -192,8 +205,6 @@ export const rejectRequest = async (req, res) => {
   }
 };
 
-// ─── Resident: Get My Requests ────────────────────────────────────────────────
-
 export const getMyRequests = async (req, res) => {
   try {
     const requests = await getResidentRequests(req.user.id);
@@ -209,8 +220,6 @@ export const getMyRequests = async (req, res) => {
     });
   }
 };
-
-// ─── Collector: Get Available Requests ────────────────────────────────────────
 
 export const getAvailable = async (req, res) => {
   try {
@@ -228,8 +237,6 @@ export const getAvailable = async (req, res) => {
   }
 };
 
-// ─── Collector: Get Assigned Requests ─────────────────────────────────────────
-
 export const getAssignedRequests = async (req, res) => {
   try {
     const requests = await getCollectorRequests(req.user.id);
@@ -245,8 +252,6 @@ export const getAssignedRequests = async (req, res) => {
     });
   }
 };
-
-// ─── Update Request Status ────────────────────────────────────────────────────
 
 export const updateStatus = async (req, res) => {
   try {
@@ -278,8 +283,6 @@ export const updateStatus = async (req, res) => {
   }
 };
 
-// ─── Collector Arrived ─────────────────────────────────────────────────────────
-
 export const arriveRequest = async (req, res) => {
   try {
     const request = await arriveAtPickup(req.params.id, req.user.id);
@@ -290,7 +293,6 @@ export const arriveRequest = async (req, res) => {
     notifyCollectorById(req.user.id, "arrival-confirmed", {
       request,
     });
-    console.log(`[SOCKET] collector-arrived sent to resident ${request.resident}`);
 
     res.status(200).json({
       success: true,
@@ -304,8 +306,6 @@ export const arriveRequest = async (req, res) => {
     });
   }
 };
-
-// ─── Verify Actual Weight ──────────────────────────────────────────────────────
 
 export const verifyWeightHandler = async (req, res) => {
   try {
@@ -324,6 +324,18 @@ export const verifyWeightHandler = async (req, res) => {
       Number(actualWeight)
     );
 
+    if (result.requiresExtraPayment) {
+      notifyResidentById(result.resident, "extra-payment-required", {
+        request: result,
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: "Final price exceeds reserved amount. Extra payment required.",
+        data: result,
+      });
+    }
+
     notifyResidentById(result.resident, "weight-verified", {
       request: result,
     });
@@ -333,7 +345,6 @@ export const verifyWeightHandler = async (req, res) => {
     notifyCollectorById(req.user.id, "weight-saved", {
       request: result,
     });
-    console.log(`[SOCKET] weight-verified + otp-generated sent to resident ${result.resident}`);
 
     res.status(200).json({
       success: true,
@@ -348,8 +359,6 @@ export const verifyWeightHandler = async (req, res) => {
   }
 };
 
-// ─── Generate Completion OTP ───────────────────────────────────────────────────
-
 export const generateOtpHandler = async (req, res) => {
   try {
     const result = await generateCompletionOtp(req.params.id, req.user.id);
@@ -357,7 +366,6 @@ export const generateOtpHandler = async (req, res) => {
     notifyResidentById(result.resident, "otp-regenerated", {
       request: result,
     });
-    console.log(`[SOCKET] otp-regenerated sent to resident ${result.resident}`);
 
     res.status(200).json({
       success: true,
@@ -371,8 +379,6 @@ export const generateOtpHandler = async (req, res) => {
     });
   }
 };
-
-// ─── Resident: Get OTP ─────────────────────────────────────────────────────────
 
 export const getOtpHandler = async (req, res) => {
   try {
@@ -390,8 +396,6 @@ export const getOtpHandler = async (req, res) => {
   }
 };
 
-// ─── Resident: Regenerate OTP ──────────────────────────────────────────────────
-
 export const regenerateOtpHandler = async (req, res) => {
   try {
     const result = await regenerateCompletionOtp(req.params.id, req.user.id);
@@ -399,7 +403,6 @@ export const regenerateOtpHandler = async (req, res) => {
     notifyResidentById(req.user.id, "otp-regenerated", {
       request: result,
     });
-    console.log(`[SOCKET] otp-regenerated sent to resident ${req.user.id}`);
 
     res.status(200).json({
       success: true,
@@ -413,8 +416,6 @@ export const regenerateOtpHandler = async (req, res) => {
     });
   }
 };
-
-// ─── Verify OTP & Complete Pickup ──────────────────────────────────────────────
 
 export const verifyOtpHandler = async (req, res) => {
   try {
@@ -439,7 +440,6 @@ export const verifyOtpHandler = async (req, res) => {
     notifyPickupParticipants(request.resident, req.user.id, "chat-closed", {
       pickupId: request._id,
     });
-    console.log(`[SOCKET] pickup-completed + chat-closed sent to resident ${request.resident} and collector ${req.user.id}`);
 
     res.status(200).json({
       success: true,
@@ -447,15 +447,12 @@ export const verifyOtpHandler = async (req, res) => {
       data: request,
     });
   } catch (error) {
-    const status = error.message.includes("Maximum") ? 400 : 400;
-    res.status(status).json({
+    res.status(400).json({
       success: false,
       message: error.message,
     });
   }
 };
-
-// ─── Cancel Request (Resident) ────────────────────────────────────────────────
 
 export const cancelRequestHandler = async (req, res) => {
   try {
@@ -468,12 +465,10 @@ export const cancelRequestHandler = async (req, res) => {
       notifyCollectorById(collectorId, "pickup-cancelled", {
         request,
       });
-      console.log(`[SOCKET] pickup-cancelled sent to collector ${collectorId}`);
     } else if (request.eligibleCollectors && request.eligibleCollectors.length > 0) {
       notifyCollectorsByIds(request.eligibleCollectors, "pickup-cancelled", {
         request,
       });
-      console.log(`[SOCKET] pickup-cancelled broadcast to ${request.eligibleCollectors.length} eligible collector(s)`);
     }
 
     notifyResidentById(req.user.id, "pickup-cancelled", {
@@ -486,6 +481,102 @@ export const cancelRequestHandler = async (req, res) => {
       data: request,
     });
   } catch (error) {
+    if (error.message === "INSUFFICIENT_BALANCE") {
+      return res.status(400).json({
+        success: false,
+        message: "Insufficient wallet balance to pay cancellation fee.",
+        code: "INSUFFICIENT_BALANCE",
+        available: error.available,
+        required: error.required,
+      });
+    }
+
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+export const confirmCashReceivedHandler = async (req, res) => {
+  try {
+    const request = await confirmCashReceived(req.params.id, req.user.id);
+
+    notifyResidentById(request.resident, "cash-confirmed", {
+      request,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Cash received confirmed. OTP can now be generated.",
+      data: request,
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+export const confirmExtraPaymentHandler = async (req, res) => {
+  try {
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing payment details",
+      });
+    }
+
+    const request = await confirmExtraPayment(
+      req.params.id,
+      req.user.id,
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature
+    );
+
+    notifyCollectorById(request.collector, "extra-payment-completed", {
+      request,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Extra payment verified. OTP has been sent.",
+      data: request,
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+export const payExtraFromWalletHandler = async (req, res) => {
+  try {
+    const request = await payExtraFromWallet(req.params.id, req.user.id);
+
+    notifyCollectorById(request.collector, "extra-payment-completed", {
+      request,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Extra payment deducted from wallet. OTP has been sent.",
+      data: request,
+    });
+  } catch (error) {
+    if (error.message === "INSUFFICIENT_BALANCE") {
+      return res.status(400).json({
+        success: false,
+        message: "Insufficient wallet balance for extra payment",
+        available: error.available,
+        required: error.required,
+      });
+    }
     res.status(400).json({
       success: false,
       message: error.message,

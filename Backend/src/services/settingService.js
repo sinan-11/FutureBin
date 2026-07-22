@@ -33,6 +33,22 @@ const DEFAULT_SETTINGS = {
     value: Number(process.env.PICKUP_EXPIRY_MINUTES) || 30,
     description: "Minutes before a broadcasting request expires",
   },
+  payment_buffer_percent: {
+    value: Number(process.env.PAYMENT_BUFFER_PERCENT) || 20,
+    description: "Percentage buffer added to estimated price for reservation",
+  },
+  payment_buffer_min: {
+    value: Number(process.env.PAYMENT_BUFFER_MIN) || 10,
+    description: "Minimum buffer amount in INR",
+  },
+  cancellation_fee_percent: {
+    value: Number(process.env.CANCELLATION_FEE_PERCENT) || 10,
+    description: "Percentage cancellation fee on estimated price",
+  },
+  cancellation_fee_min: {
+    value: Number(process.env.CANCELLATION_FEE_MIN) || 5,
+    description: "Minimum cancellation fee in INR",
+  },
 };
 
 let cachedPrices = null;
@@ -73,6 +89,7 @@ export const updateSetting = async (key, value) => {
   }
 
   cachedPrices = null;
+  cachedPaymentConfig = null;
 
   return setting;
 };
@@ -93,6 +110,7 @@ export const updateSettings = async (updates) => {
   }
 
   cachedPrices = null;
+  cachedPaymentConfig = null;
 
   return results;
 };
@@ -125,4 +143,32 @@ export const getWastePrices = async () => {
 
 export const invalidatePriceCache = () => {
   cachedPrices = null;
+};
+
+let cachedPaymentConfig = null;
+
+export const getPaymentConfig = async () => {
+  if (cachedPaymentConfig) return cachedPaymentConfig;
+
+  const keys = [
+    "payment_buffer_percent",
+    "payment_buffer_min",
+    "cancellation_fee_percent",
+    "cancellation_fee_min",
+  ];
+
+  const map = await getSettingsByKey(keys);
+
+  cachedPaymentConfig = {
+    bufferPercent: Number(map.payment_buffer_percent) || 20,
+    bufferMin: Number(map.payment_buffer_min) || 10,
+    cancellationFeePercent: Number(map.cancellation_fee_percent) || 10,
+    cancellationFeeMin: Number(map.cancellation_fee_min) || 5,
+  };
+
+  return cachedPaymentConfig;
+};
+
+export const invalidatePaymentConfigCache = () => {
+  cachedPaymentConfig = null;
 };

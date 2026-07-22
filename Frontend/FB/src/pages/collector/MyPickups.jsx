@@ -12,12 +12,12 @@ import useAuth from "../../hooks/useAuth";
 import useSocket from "../../hooks/useSocket";
 import {
   getAssignedPickupsService,
-  updatePickupStatusService,
   arriveAtPickupService,
   verifyWeightService,
   generateOtpService,
   regenerateOtpService,
   verifyOtpService,
+  confirmCashService,
 } from "../../services/pickupService";
 import { ROUTES } from "../../utils/constants";
 import { getErrorMessage, formatDateTime, capitalize } from "../../utils/helpers";
@@ -70,6 +70,7 @@ const PickupCard = ({
   onArrive,
   onVerifyWeight,
   onVerifyOtp,
+  onConfirmCash,
   onGenerateOtp,
   loading,
   mapOpen,
@@ -92,6 +93,12 @@ const PickupCard = ({
               <FaRecycle className="h-3 w-3" />
               {capitalize(request.wasteType)}
             </span>
+            {request.paymentMethod && (
+              <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ${request.paymentMethod === "wallet" ? "bg-blue-50 text-blue-700 ring-blue-200" : "bg-amber-50 text-amber-700 ring-amber-200"}`}>
+                <FaMoneyBillWave className="h-3 w-3" />
+                {capitalize(request.paymentMethod)}
+              </span>
+            )}
           </div>
 
           <h4 className="font-semibold text-gray-800 truncate">{request.pickupAddress}</h4>
@@ -157,7 +164,22 @@ const PickupCard = ({
               color="bg-orange-600 hover:bg-orange-700"
             />
           )}
-          {request.status === "weight_verified" && (
+          {request.status === "weight_verified" && request.paymentMethod === "cash" && !request.cashConfirmed && (
+            <ActionButton
+              onClick={() => onConfirmCash(request._id)}
+              loading={loading === `cash-${request._id}`}
+              label="Confirm Cash"
+              icon={<FaMoneyBillWave className="h-3.5 w-3.5" />}
+              color="bg-green-600 hover:bg-green-700"
+            />
+          )}
+          {request.status === "weight_verified" && request.paymentMethod === "cash" && request.cashConfirmed && (
+            <span className="inline-flex items-center gap-1.5 rounded-xl bg-green-50 px-4 py-2.5 text-sm font-bold text-green-700"><FaCheckCircle className="h-3.5 w-3.5" /> Cash Confirmed</span>
+          )}
+          {request.status === "weight_verified" && request.paymentStatus === "awaiting_extra_payment" && (
+            <span className="inline-flex items-center gap-1.5 rounded-xl bg-orange-50 px-4 py-2.5 text-sm font-bold text-orange-700"><FaMoneyBillWave className="h-3.5 w-3.5" /> Awaiting Payment</span>
+          )}
+          {request.status === "weight_verified" && (request.paymentMethod === "wallet" || (request.paymentMethod === "cash" && request.cashConfirmed)) && request.paymentStatus !== "awaiting_extra_payment" && (
             <ActionButton
               onClick={() => onVerifyOtp(request._id)}
               label="Enter OTP"
@@ -427,6 +449,19 @@ const MyPickups = () => {
     setMapOpen((prev) => (prev === id ? null : id));
   };
 
+  const handleConfirmCash = async (id) => {
+    setActionLoading(`cash-${id}`);
+    try {
+      await confirmCashService(id);
+      toast.success("Cash received confirmed");
+      loadPickups();
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   if (loading) return <div className="animate-fade-in"><ListSkeleton count={3} /></div>;
 
   return (
@@ -453,6 +488,7 @@ const MyPickups = () => {
               onArrive={handleArrive}
               onVerifyWeight={handleVerifyWeight}
               onVerifyOtp={handleVerifyOtp}
+              onConfirmCash={handleConfirmCash}
               onGenerateOtp={handleGenerateOtp}
               loading={actionLoading}
               mapOpen={mapOpen}
@@ -470,6 +506,7 @@ const MyPickups = () => {
               onArrive={handleArrive}
               onVerifyWeight={handleVerifyWeight}
               onVerifyOtp={handleVerifyOtp}
+              onConfirmCash={handleConfirmCash}
               onGenerateOtp={handleGenerateOtp}
               loading={actionLoading}
               mapOpen={mapOpen}

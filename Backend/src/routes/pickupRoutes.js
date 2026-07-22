@@ -15,6 +15,9 @@ import {
   getAssignedRequests,
   updateStatus,
   cancelRequestHandler,
+  confirmCashReceivedHandler,
+  confirmExtraPaymentHandler,
+  payExtraFromWalletHandler,
 } from "../controllers/pickupController.js";
 
 import {
@@ -59,6 +62,20 @@ router.post(
   protect,
   authorize("resident"),
   regenerateOtpHandler
+);
+
+router.post(
+  "/:id/confirm-extra-payment",
+  protect,
+  authorize("resident"),
+  confirmExtraPaymentHandler
+);
+
+router.post(
+  "/:id/pay-extra-wallet",
+  protect,
+  authorize("resident"),
+  payExtraFromWalletHandler
 );
 
 // ─── Collector Routes ─────────────────────────────────────────────────────────
@@ -124,6 +141,13 @@ router.patch(
   protect,
   authorize("collector"),
   verifyOtpHandler
+);
+
+router.patch(
+  "/:id/confirm-cash",
+  protect,
+  authorize("collector"),
+  confirmCashReceivedHandler
 );
 
 export default router;

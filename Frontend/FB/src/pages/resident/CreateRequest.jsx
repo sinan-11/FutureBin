@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaTrashAlt, FaArrowLeft } from "react-icons/fa";
+import { FaTrashAlt, FaArrowLeft, FaWallet, FaMoneyBill } from "react-icons/fa";
 import { toast } from "react-toastify";
 
 import LocationPickerMap from "../../components/map/LocationPickerMap";
@@ -27,6 +27,7 @@ const CreateRequest = () => {
     description: "",
     scheduledAt: "",
     coordinates: null,
+    paymentMethod: "wallet",
   });
 
   const [errors, setErrors] = useState({});
@@ -76,6 +77,7 @@ const CreateRequest = () => {
         coordinates: form.coordinates,
         description: form.description,
         scheduledAt: form.scheduledAt || undefined,
+        paymentMethod: form.paymentMethod,
       });
       toast.success("Pickup request created! Nearby collectors have been notified.");
       navigate(ROUTES.RESIDENT_MY_REQUESTS);
@@ -200,6 +202,60 @@ const CreateRequest = () => {
               onChange={handleChange}
               className={inputClass()}
             />
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-gray-700">Payment Method</label>
+            <p className="mb-1.5 text-xs text-gray-400">How would you like to pay?</p>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setForm((prev) => ({ ...prev, paymentMethod: "wallet" }))}
+                className={`flex items-center gap-3 rounded-xl border-2 p-4 transition-all ${
+                  form.paymentMethod === "wallet"
+                    ? "border-brand-500 bg-brand-50"
+                    : "border-gray-200 bg-white hover:border-gray-300"
+                }`}
+              >
+                <div className={`flex h-10 w-10 items-center justify-center rounded-full ${
+                  form.paymentMethod === "wallet" ? "bg-brand-100" : "bg-gray-100"
+                }`}>
+                  <FaWallet className={`h-5 w-5 ${
+                    form.paymentMethod === "wallet" ? "text-brand-600" : "text-gray-400"
+                  }`} />
+                </div>
+                <div className="text-left">
+                  <p className={`text-sm font-semibold ${
+                    form.paymentMethod === "wallet" ? "text-brand-700" : "text-gray-700"
+                  }`}>Wallet</p>
+                  <p className="text-xs text-gray-400">Pay from balance</p>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setForm((prev) => ({ ...prev, paymentMethod: "cash" }))}
+                className={`flex items-center gap-3 rounded-xl border-2 p-4 transition-all ${
+                  form.paymentMethod === "cash"
+                    ? "border-brand-500 bg-brand-50"
+                    : "border-gray-200 bg-white hover:border-gray-300"
+                }`}
+              >
+                <div className={`flex h-10 w-10 items-center justify-center rounded-full ${
+                  form.paymentMethod === "cash" ? "bg-brand-100" : "bg-gray-100"
+                }`}>
+                  <FaMoneyBill className={`h-5 w-5 ${
+                    form.paymentMethod === "cash" ? "text-brand-600" : "text-gray-400"
+                  }`} />
+                </div>
+                <div className="text-left">
+                  <p className={`text-sm font-semibold ${
+                    form.paymentMethod === "cash" ? "text-brand-700" : "text-gray-700"
+                  }`}>Cash</p>
+                  <p className="text-xs text-gray-400">Pay at pickup</p>
+                </div>
+              </button>
+            </div>
           </div>
 
           <div className="flex flex-col-reverse gap-3 pt-4 sm:flex-row">

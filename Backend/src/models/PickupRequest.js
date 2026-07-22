@@ -119,7 +119,7 @@ const pickupRequestSchema = new mongoose.Schema(
       default: null,
     },
 
-    finalAmount: {
+    finalPrice: {
       type: Number,
       default: null,
     },
@@ -152,6 +152,56 @@ const pickupRequestSchema = new mongoose.Schema(
     otpAttempts: {
       type: Number,
       default: 0,
+    },
+
+    paymentMethod: {
+      type: String,
+      enum: ["wallet", "cash"],
+      default: "wallet",
+    },
+
+    reservedAmount: {
+      type: Number,
+      default: 0,
+    },
+
+    paymentStatus: {
+      type: String,
+      enum: [
+        "pending",
+        "reserved",
+        "awaiting_extra_payment",
+        "cash_pending",
+        "completed",
+        "cancelled",
+      ],
+      default: "pending",
+    },
+
+    cashConfirmed: {
+      type: Boolean,
+      default: false,
+    },
+
+    extraPaymentOrderId: {
+      type: String,
+      default: null,
+    },
+
+    extraPaymentAmount: {
+      type: Number,
+      default: 0,
+    },
+
+    razorpayKeyId: {
+      type: String,
+      default: null,
+    },
+
+    reservationId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Transaction",
+      default: null,
     },
   },
   {

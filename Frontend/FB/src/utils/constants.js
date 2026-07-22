@@ -79,6 +79,9 @@ export const API_ENDPOINTS = {
   GET_PICKUP_OTP: (id) => `/pickup-requests/${id}/otp`,
   REGENERATE_OTP: (id) => `/pickup-requests/${id}/regenerate-otp`,
   VERIFY_OTP: (id) => `/pickup-requests/${id}/verify-otp`,
+  CONFIRM_CASH: (id) => `/pickup-requests/${id}/confirm-cash`,
+  CONFIRM_EXTRA_PAYMENT: (id) => `/pickup-requests/${id}/confirm-extra-payment`,
+  PAY_EXTRA_WALLET: (id) => `/pickup-requests/${id}/pay-extra-wallet`,
 
   // Wallet
   WALLET_CREATE: "/wallet/create",

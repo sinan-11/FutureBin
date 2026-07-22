@@ -27,9 +27,9 @@ export const getMyWallet = async (req, res) => {
 
 export const getTransactionsHandler = async (req, res) => {
   try {
-    const transactions = await walletService.getTransactions();
+    const transactions = await walletService.getTransactions(req.user.id);
 
-    res.status(200).json({ success: true, message: "No transactions yet", data: { transactions } });
+    res.status(200).json({ success: true, data: { transactions } });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

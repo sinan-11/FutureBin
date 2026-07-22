@@ -99,14 +99,30 @@ const RequestCard = ({ request, onCancel, cancelling }) => {
             <FaRecycle className="h-3 w-3" />
             {capitalize(request.wasteType)}
           </span>
+          {request.paymentMethod && (
+            <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${request.paymentMethod === "wallet" ? "bg-blue-100 text-blue-700" : "bg-amber-100 text-amber-700"}`}>
+              <FaMoneyBillWave className="h-3 w-3" />
+              {capitalize(request.paymentMethod)}
+            </span>
+          )}
+          {request.paymentStatus === "awaiting_extra_payment" && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-semibold text-orange-700">
+              Extra Payment Due
+            </span>
+          )}
         </div>
-        {request.status === "weight_verified" && (
+        {request.status === "weight_verified" && request.paymentStatus !== "awaiting_extra_payment" && (
           <button
             onClick={() => setShowOtp(true)}
             className="flex items-center gap-1.5 rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 ring-1 ring-amber-200 transition hover:bg-amber-100 active:scale-95"
           >
             <FaKey className="h-3 w-3" /> View OTP
           </button>
+        )}
+        {request.status === "weight_verified" && request.paymentStatus === "awaiting_extra_payment" && (
+          <span className="flex items-center gap-1.5 rounded-lg bg-orange-50 px-3 py-1.5 text-xs font-semibold text-orange-700 ring-1 ring-orange-200">
+            <FaMoneyBillWave className="h-3 w-3" /> Pay ₹{request.extraPaymentAmount}
+          </span>
         )}
       </div>
 

@@ -18,3 +18,12 @@ export const createWalletService = async () => {
     throw new Error(getErrorMessage(error));
   }
 };
+
+export const getTransactionsService = async () => {
+  try {
+    const res = await walletApi.getTransactions();
+    return res.data.data.transactions;
+  } catch (error) {
+    throw new Error(getErrorMessage(error));
+  }
+};

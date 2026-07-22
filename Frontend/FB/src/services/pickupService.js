@@ -236,3 +236,51 @@ export const cancelPickupService = async (id) => {
     store.dispatch(setPickupLoading(false));
   }
 };
+
+export const confirmCashService = async (id) => {
+  store.dispatch(setPickupLoading(true));
+  store.dispatch(clearPickupError());
+
+  try {
+    const response = await pickupApi.confirmCash(id);
+    return response.data;
+  } catch (error) {
+    const message = getErrorMessage(error);
+    store.dispatch(setPickupError(message));
+    throw error;
+  } finally {
+    store.dispatch(setPickupLoading(false));
+  }
+};
+
+export const confirmExtraPaymentService = async (id, paymentData) => {
+  store.dispatch(setPickupLoading(true));
+  store.dispatch(clearPickupError());
+
+  try {
+    const response = await pickupApi.confirmExtraPayment(id, paymentData);
+    return response.data;
+  } catch (error) {
+    const message = getErrorMessage(error);
+    store.dispatch(setPickupError(message));
+    throw error;
+  } finally {
+    store.dispatch(setPickupLoading(false));
+  }
+};
+
+export const payExtraWalletService = async (id) => {
+  store.dispatch(setPickupLoading(true));
+  store.dispatch(clearPickupError());
+
+  try {
+    const response = await pickupApi.payExtraWallet(id);
+    return response.data;
+  } catch (error) {
+    const message = getErrorMessage(error);
+    store.dispatch(setPickupError(message));
+    throw error;
+  } finally {
+    store.dispatch(setPickupLoading(false));
+  }
+};

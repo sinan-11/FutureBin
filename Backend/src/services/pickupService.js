@@ -1,9 +1,19 @@
+import mongoose from "mongoose";
 import crypto from "crypto";
 import PickupRequest from "../models/PickupRequest.js";
 import User from "../models/User.js";
 import { sendPickupOtp, sendPickupCompletedToResident, sendPickupCompletedToCollector } from "../utils/sendEmail.js";
-import { getWastePrices } from "./settingService.js";
+import { getWastePrices, getPaymentConfig } from "./settingService.js";
 import { deleteMessagesByPickup } from "./chatService.js";
+import {
+  reserveFunds,
+  releaseHold,
+  releasePartialHold,
+  increaseHold,
+  settlePickup,
+  chargeCancellationFee,
+  getWalletByUser,
+} from "./walletService.js";
 
 const SEARCH_RADIUS = Number(process.env.PICKUP_SEARCH_RADIUS) || 5000;
 const EXPIRY_MINUTES = Number(process.env.PICKUP_EXPIRY_MINUTES) || 30;
@@ -12,7 +22,8 @@ const VALID_TRANSITIONS = {
   broadcasting: ["accepted", "cancelled", "expired"],
   accepted: ["collector_arrived", "cancelled"],
   collector_arrived: ["weight_verified"],
-  weight_verified: ["completed"],
+  weight_verified: ["completed", "awaiting_extra_payment"],
+  awaiting_extra_payment: ["weight_verified", "cancelled"],
 };
 
 const ACTIVE_STATUSES = [
@@ -22,7 +33,15 @@ const ACTIVE_STATUSES = [
   "weight_verified",
   "payment_pending",
   "paid",
+  "awaiting_extra_payment",
 ];
+
+const STATUS_TIMESTAMPS = {
+  accepted: "acceptedAt",
+  collector_arrived: "arrivedAt",
+  completed: "completedAt",
+  cancelled: "cancelledAt",
+};
 
 export const hasActivePickup = async (collectorId) => {
   const count = await PickupRequest.countDocuments({
@@ -41,17 +60,23 @@ export const getActivePickupForCollector = async (collectorId) => {
   return pickup;
 };
 
-const STATUS_TIMESTAMPS = {
-  accepted: "acceptedAt",
-  collector_arrived: "arrivedAt",
-  completed: "completedAt",
-  cancelled: "cancelledAt",
-};
-
 export const calculatePrice = async (weight, wasteType) => {
   const prices = await getWastePrices();
   const rate = prices[wasteType] || prices.defaultRate;
   return Math.round(weight * rate * 100) / 100;
+};
+
+export const calculateReservedAmount = async (estimatedPrice) => {
+  const config = await getPaymentConfig();
+  const bufferPercentAmount = (estimatedPrice * config.bufferPercent) / 100;
+  const buffer = Math.max(bufferPercentAmount, config.bufferMin);
+  return Math.round((estimatedPrice + buffer) * 100) / 100;
+};
+
+export const calculateCancellationFee = async (estimatedPrice) => {
+  const config = await getPaymentConfig();
+  const percentFee = (estimatedPrice * config.cancellationFeePercent) / 100;
+  return Math.max(percentFee, config.cancellationFeeMin);
 };
 
 export const findNearbyCollectors = async (
@@ -87,9 +112,78 @@ export const createPickupRequest = async (data, residentId) => {
     description,
     images,
     scheduledAt,
+    paymentMethod,
   } = data;
 
   const estimatedPrice = await calculatePrice(estimatedWeight, wasteType);
+  const method = paymentMethod === "cash" ? "cash" : "wallet";
+
+  if (method === "wallet") {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      const tempPickup = await PickupRequest.create(
+        [
+          {
+            resident: residentId,
+            wasteType,
+            estimatedWeight,
+            estimatedPrice,
+            description: description || "",
+            images: images || [],
+            pickupAddress,
+            location: { type: "Point", coordinates },
+            scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
+            status: "pending",
+            paymentMethod: "wallet",
+          },
+        ],
+        { session }
+      );
+
+      const pickupId = tempPickup[0]._id;
+      const reservedAmount = await calculateReservedAmount(estimatedPrice);
+      const { wallet, transaction } = await reserveFunds(
+        residentId,
+        pickupId,
+        reservedAmount,
+        session
+      );
+
+      const request = await PickupRequest.findByIdAndUpdate(
+        pickupId,
+        {
+          $set: {
+            status: "broadcasting",
+            reservedAmount,
+            paymentStatus: "reserved",
+            reservationId: transaction._id,
+          },
+        },
+        { new: true, session }
+      );
+
+      const nearbyCollectors = await findNearbyCollectors(coordinates);
+      const collectorIds = nearbyCollectors.map((c) => c._id);
+
+      if (collectorIds.length > 0) {
+        request.eligibleCollectors = collectorIds;
+        await request.save({ session });
+      }
+
+      await session.commitTransaction();
+
+      return { request, nearbyCollectors: collectorIds };
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      session.endSession();
+    }
+  }
+
+  const reservedAmount = await calculateReservedAmount(estimatedPrice);
 
   const request = await PickupRequest.create({
     resident: residentId,
@@ -99,12 +193,12 @@ export const createPickupRequest = async (data, residentId) => {
     description: description || "",
     images: images || [],
     pickupAddress,
-    location: {
-      type: "Point",
-      coordinates,
-    },
+    location: { type: "Point", coordinates },
     scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
     status: "broadcasting",
+    paymentMethod: "cash",
+    reservedAmount,
+    paymentStatus: "cash_pending",
   });
 
   const nearbyCollectors = await findNearbyCollectors(coordinates);
@@ -115,10 +209,7 @@ export const createPickupRequest = async (data, residentId) => {
     await request.save();
   }
 
-  return {
-    request,
-    nearbyCollectors: collectorIds,
-  };
+  return { request, nearbyCollectors: collectorIds };
 };
 
 export const acceptPickupRequest = async (requestId, collectorId) => {
@@ -173,7 +264,8 @@ export const getResidentRequests = async (residentId) => {
       r.status === "collecting" ||
       r.status === "weight_verified" ||
       r.status === "payment_pending" ||
-      r.status === "paid"
+      r.status === "paid" ||
+      r.status === "awaiting_extra_payment"
   );
 
   const completed = requests.filter(
@@ -198,6 +290,7 @@ export const getCollectorRequests = async (collectorId) => {
         "weight_verified",
         "payment_pending",
         "paid",
+        "awaiting_extra_payment",
         "completed",
       ],
     },
@@ -212,7 +305,8 @@ export const getCollectorRequests = async (collectorId) => {
       r.status === "collecting" ||
       r.status === "weight_verified" ||
       r.status === "payment_pending" ||
-      r.status === "paid"
+      r.status === "paid" ||
+      r.status === "awaiting_extra_payment"
   );
 
   const completed = requests.filter(
@@ -324,14 +418,84 @@ export const cancelRequest = async (requestId, residentId) => {
   }
 
   const collectorId = request.collector;
+  const isBeforeAcceptance = request.status === "broadcasting";
 
-  request.status = "cancelled";
-  request.cancelledAt = new Date();
-  request.collector = null;
+  if (request.paymentMethod === "wallet") {
+    if (isBeforeAcceptance) {
+      const session = await mongoose.startSession();
+      session.startTransaction();
 
-  await request.save();
+      try {
+        await releaseHold(residentId, requestId, session);
 
-  return { request, collectorId };
+        await PickupRequest.findByIdAndUpdate(
+          requestId,
+          {
+            $set: {
+              status: "cancelled",
+              cancelledAt: new Date(),
+              collector: null,
+              paymentStatus: "cancelled",
+            },
+          },
+          { session }
+        );
+
+        await session.commitTransaction();
+      } catch (error) {
+        await session.abortTransaction();
+        throw error;
+      } finally {
+        session.endSession();
+      }
+    } else {
+      const cancellationFee = await calculateCancellationFee(request.estimatedPrice);
+
+      const session = await mongoose.startSession();
+      session.startTransaction();
+
+      try {
+        await chargeCancellationFee(
+          residentId,
+          collectorId,
+          requestId,
+          cancellationFee,
+          session
+        );
+
+        await PickupRequest.findByIdAndUpdate(
+          requestId,
+          {
+            $set: {
+              status: "cancelled",
+              cancelledAt: new Date(),
+              collector: null,
+              paymentStatus: "cancelled",
+            },
+          },
+          { session }
+        );
+
+        await session.commitTransaction();
+      } catch (error) {
+        await session.abortTransaction();
+        throw error;
+      } finally {
+        session.endSession();
+      }
+    }
+  } else {
+    await PickupRequest.findByIdAndUpdate(requestId, {
+      $set: {
+        status: "cancelled",
+        cancelledAt: new Date(),
+        collector: null,
+        paymentStatus: "cancelled",
+      },
+    });
+  }
+
+  return { request: await PickupRequest.findById(requestId), collectorId };
 };
 
 const notifyPickupOtp = async (resident, otp, pickupAddress) => {
@@ -385,30 +549,273 @@ export const verifyActualWeight = async (requestId, collectorId, actualWeight) =
     throw new Error("Cannot verify weight in the current status");
   }
 
-  const otp = String(crypto.randomInt(100000, 999999));
-  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
-
+  const finalPrice = await calculatePrice(Number(actualWeight), request.wasteType);
   request.actualWeight = Number(actualWeight);
-  request.finalAmount = await calculatePrice(Number(actualWeight), request.wasteType);
+  request.finalPrice = finalPrice;
+
+  if (request.paymentMethod === "cash") {
+    request.status = "weight_verified";
+    request.paymentStatus = "cash_pending";
+
+    await request.save();
+
+    const resident = await User.findById(request.resident);
+    if (resident) {
+      await notifyPickupOtp(resident, "", request.pickupAddress);
+    }
+
+    return request.toObject();
+  }
+
+  if (finalPrice > request.reservedAmount) {
+    const difference = Math.round((finalPrice - request.reservedAmount) * 100) / 100;
+
+    const wallet = await getWalletByUser(request.resident);
+    const available = wallet ? wallet.balance - wallet.heldBalance : 0;
+
+    if (available >= difference) {
+      const session = await mongoose.startSession();
+      session.startTransaction();
+      try {
+        await increaseHold(request.resident, request._id, difference, session);
+
+        request.status = "weight_verified";
+        request.reservedAmount = finalPrice;
+        request.paymentStatus = "reserved";
+
+        const otp = String(crypto.randomInt(100000, 999999));
+        const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+        request.completionOtp = otp;
+        request.completionOtpExpiresAt = expiresAt;
+        request.otpAttempts = 0;
+
+        await request.save({ session });
+        await session.commitTransaction();
+
+        const resident = await User.findById(request.resident);
+        if (resident) {
+          await notifyPickupOtp(resident, otp, request.pickupAddress);
+        }
+
+        const result = request.toObject();
+        if (process.env.NODE_ENV !== "production") {
+          result.otp = otp;
+        }
+
+        return result;
+      } catch (err) {
+        await session.abortTransaction();
+        throw err;
+      } finally {
+        session.endSession();
+      }
+    }
+
+    const getRazorpayInstance = (await import("../config/razorpay.js")).default;
+    const receipt = `EX${Date.now().toString(36)}`;
+
+    const order = await getRazorpayInstance().orders.create({
+      amount: Math.round(difference * 100),
+      currency: "INR",
+      receipt,
+    });
+
+    request.status = "weight_verified";
+    request.paymentStatus = "awaiting_extra_payment";
+    request.extraPaymentOrderId = order.id;
+    request.extraPaymentAmount = difference;
+    request.razorpayKeyId = process.env.RAZORPAY_KEY_ID;
+
+    await request.save();
+
+    return {
+      ...request.toObject(),
+      requiresExtraPayment: true,
+      extraPaymentOrder: order,
+      extraPaymentAmount: difference,
+      razorpayKeyId: process.env.RAZORPAY_KEY_ID,
+    };
+  }
+
   request.status = "weight_verified";
-  request.completionOtp = otp;
-  request.completionOtpExpiresAt = expiresAt;
-  request.otpAttempts = 0;
+  request.paymentStatus = "reserved";
 
   await request.save();
 
   const resident = await User.findById(request.resident);
   if (resident) {
+    const otp = String(crypto.randomInt(100000, 999999));
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+    request.completionOtp = otp;
+    request.completionOtpExpiresAt = expiresAt;
+    request.otpAttempts = 0;
+    await request.save();
+
     await notifyPickupOtp(resident, otp, request.pickupAddress);
+
+    const result = request.toObject();
+    if (process.env.NODE_ENV !== "production") {
+      result.otp = otp;
+    }
+
+    return result;
   }
 
-  const result = request.toObject();
+  return request.toObject();
+};
 
-  if (process.env.NODE_ENV !== "production") {
-    result.otp = otp;
+export const confirmExtraPayment = async (requestId, residentId, razorpayOrderId, razorpayPaymentId, razorpaySignature) => {
+  const request = await PickupRequest.findOne({
+    _id: requestId,
+    resident: residentId,
+    status: "weight_verified",
+    paymentStatus: "awaiting_extra_payment",
+  });
+
+  if (!request) {
+    throw new Error("Pickup request not found or not awaiting extra payment");
   }
 
-  return result;
+  const getRazorpayInstance = (await import("../config/razorpay.js")).default;
+  const cryptoModule = await import("crypto");
+
+  const generatedSignature = cryptoModule.default
+    .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+    .update(`${razorpayOrderId}|${razorpayPaymentId}`)
+    .digest("hex");
+
+  if (generatedSignature !== razorpaySignature) {
+    throw new Error("Invalid payment signature");
+  }
+
+  const payment = await getRazorpayInstance().payments.fetch(razorpayPaymentId);
+  const expectedAmount = Math.round(request.extraPaymentAmount * 100);
+
+  if (payment.amount !== expectedAmount) {
+    throw new Error("Amount mismatch");
+  }
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    await increaseHold(
+      residentId,
+      requestId,
+      request.extraPaymentAmount,
+      session
+    );
+
+    const otp = String(crypto.randomInt(100000, 999999));
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+    await PickupRequest.findByIdAndUpdate(
+      requestId,
+      {
+        $set: {
+          reservedAmount: request.finalPrice,
+          paymentStatus: "reserved",
+          completionOtp: otp,
+          completionOtpExpiresAt: expiresAt,
+          otpAttempts: 0,
+          extraPaymentOrderId: null,
+          extraPaymentAmount: 0,
+        },
+      },
+      { session }
+    );
+
+    await session.commitTransaction();
+
+    const resident = await User.findById(residentId);
+    if (resident) {
+      await notifyPickupOtp(resident, otp, request.pickupAddress);
+    }
+
+    const updated = await PickupRequest.findById(requestId);
+    const result = updated.toObject();
+    if (process.env.NODE_ENV !== "production") {
+      result.otp = otp;
+    }
+
+    return result;
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
+  }
+};
+
+export const payExtraFromWallet = async (requestId, residentId) => {
+  const request = await PickupRequest.findOne({
+    _id: requestId,
+    resident: residentId,
+    status: "weight_verified",
+    paymentStatus: "awaiting_extra_payment",
+  });
+
+  if (!request) {
+    throw new Error("Pickup request not found or not awaiting extra payment");
+  }
+
+  const wallet = await getWalletByUser(residentId);
+  if (!wallet) throw new Error("Wallet not found");
+
+  const available = wallet.balance - wallet.heldBalance;
+  if (available < request.extraPaymentAmount) {
+    const err = new Error("INSUFFICIENT_BALANCE");
+    err.available = available;
+    err.required = request.extraPaymentAmount;
+    throw err;
+  }
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    await increaseHold(residentId, requestId, request.extraPaymentAmount, session);
+
+    const otp = String(crypto.randomInt(100000, 999999));
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+    await PickupRequest.findByIdAndUpdate(
+      requestId,
+      {
+        $set: {
+          reservedAmount: request.finalPrice,
+          paymentStatus: "reserved",
+          completionOtp: otp,
+          completionOtpExpiresAt: expiresAt,
+          otpAttempts: 0,
+          extraPaymentOrderId: null,
+          extraPaymentAmount: 0,
+        },
+      },
+      { session }
+    );
+
+    await session.commitTransaction();
+
+    const resident = await User.findById(residentId);
+    if (resident) {
+      await notifyPickupOtp(resident, otp, request.pickupAddress);
+    }
+
+    const updated = await PickupRequest.findById(requestId);
+    const result = updated.toObject();
+    if (process.env.NODE_ENV !== "production") {
+      result.otp = otp;
+    }
+
+    return result;
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
+  }
 };
 
 export const generateCompletionOtp = async (requestId, collectorId) => {
@@ -422,6 +829,14 @@ export const generateCompletionOtp = async (requestId, collectorId) => {
     const existing = await PickupRequest.findById(requestId);
     if (!existing) throw new Error("Pickup request not found");
     throw new Error("Cannot generate OTP in the current status");
+  }
+
+  if (request.paymentMethod === "wallet" && request.finalPrice > request.reservedAmount) {
+    throw new Error("Cannot generate OTP until extra payment is completed");
+  }
+
+  if (request.paymentMethod === "cash" && !request.cashConfirmed) {
+    throw new Error("Cannot generate OTP until cash is confirmed as received");
   }
 
   const otp = String(crypto.randomInt(100000, 999999));
@@ -490,32 +905,34 @@ export const getPickupOtp = async (requestId, residentId) => {
   return { otp: request.completionOtp };
 };
 
-export const verifyCompletionOtp = async (requestId, collectorId, otp) => {
-  const matched = await PickupRequest.findOneAndUpdate(
-    {
-      _id: requestId,
-      collector: collectorId,
-      status: "weight_verified",
-      completionOtp: otp,
-      completionOtpExpiresAt: { $gt: new Date() },
-    },
-    {
-      $set: {
-        status: "completed",
-        completedAt: new Date(),
-        otpVerified: true,
-        completionOtp: null,
-        completionOtpExpiresAt: null,
-        otpAttempts: 0,
-        // TODO: Debit resident wallet
-        // TODO: Credit collector wallet
-        // TODO: Create wallet transactions
-      },
-    },
-    { new: true }
-  );
+export const confirmCashReceived = async (requestId, collectorId) => {
+  const request = await PickupRequest.findOne({
+    _id: requestId,
+    collector: collectorId,
+    status: "weight_verified",
+    paymentMethod: "cash",
+  });
 
-  if (!matched) {
+  if (!request) {
+    throw new Error("Pickup not found or not a cash pickup");
+  }
+
+  request.cashConfirmed = true;
+  await request.save();
+
+  return request;
+};
+
+export const verifyCompletionOtp = async (requestId, collectorId, otp) => {
+  const pickup = await PickupRequest.findOne({
+    _id: requestId,
+    collector: collectorId,
+    status: "weight_verified",
+    completionOtp: otp,
+    completionOtpExpiresAt: { $gt: new Date() },
+  });
+
+  if (!pickup) {
     const updated = await PickupRequest.findOneAndUpdate(
       {
         _id: requestId,
@@ -545,6 +962,56 @@ export const verifyCompletionOtp = async (requestId, collectorId, otp) => {
     throw new Error("Invalid OTP");
   }
 
+  if (pickup.paymentMethod === "wallet") {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      await settlePickup(
+        pickup.resident,
+        collectorId,
+        requestId,
+        pickup.finalPrice,
+        session
+      );
+
+      await PickupRequest.findByIdAndUpdate(
+        requestId,
+        {
+          $set: {
+            status: "completed",
+            completedAt: new Date(),
+            otpVerified: true,
+            completionOtp: null,
+            completionOtpExpiresAt: null,
+            otpAttempts: 0,
+            paymentStatus: "completed",
+          },
+        },
+        { session }
+      );
+
+      await session.commitTransaction();
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      session.endSession();
+    }
+  } else {
+    await PickupRequest.findByIdAndUpdate(requestId, {
+      $set: {
+        status: "completed",
+        completedAt: new Date(),
+        otpVerified: true,
+        completionOtp: null,
+        completionOtpExpiresAt: null,
+        otpAttempts: 0,
+        paymentStatus: "completed",
+      },
+    });
+  }
+
   try {
     const completed = await PickupRequest.findById(requestId).lean();
 
@@ -563,7 +1030,7 @@ export const verifyCompletionOtp = async (requestId, collectorId, otp) => {
             resident.name,
             completed.pickupAddress,
             completed.actualWeight,
-            completed.finalAmount,
+            completed.finalPrice,
             collector?.name || "Collector"
           )
         );
@@ -576,7 +1043,7 @@ export const verifyCompletionOtp = async (requestId, collectorId, otp) => {
             collector.name,
             completed.pickupAddress,
             completed.actualWeight,
-            completed.finalAmount,
+            completed.finalPrice,
             resident?.name || "Resident"
           )
         );
@@ -605,22 +1072,47 @@ export const expireStaleRequests = async () => {
   const staleRequests = await PickupRequest.find({
     status: "broadcasting",
     createdAt: { $lt: cutoff },
-  }).select("_id resident eligibleCollectors");
+  }).select("_id resident eligibleCollectors paymentMethod");
 
   if (staleRequests.length === 0) {
     return { count: 0, expiredRequests: [] };
   }
 
-  await PickupRequest.updateMany(
-    {
-      _id: { $in: staleRequests.map((r) => r._id) },
-    },
-    {
-      $set: {
-        status: "expired",
-      },
+  for (const req of staleRequests) {
+    if (req.paymentMethod === "wallet") {
+      const session = await mongoose.startSession();
+      session.startTransaction();
+
+      try {
+        await releaseHold(req.resident, req._id, session);
+
+        await PickupRequest.findByIdAndUpdate(
+          req._id,
+          {
+            $set: {
+              status: "expired",
+              paymentStatus: "cancelled",
+            },
+          },
+          { session }
+        );
+
+        await session.commitTransaction();
+      } catch (error) {
+        await session.abortTransaction();
+        console.error(`[CRON] Failed to expire request ${req._id}:`, error.message);
+      } finally {
+        session.endSession();
+      }
+    } else {
+      await PickupRequest.findByIdAndUpdate(req._id, {
+        $set: {
+          status: "expired",
+          paymentStatus: "cancelled",
+        },
+      });
     }
-  );
+  }
 
   return {
     count: staleRequests.length,

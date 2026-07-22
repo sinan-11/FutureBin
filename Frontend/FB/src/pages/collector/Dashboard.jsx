@@ -30,6 +30,7 @@ import {
   generateOtpService,
   regenerateOtpService,
   verifyOtpService,
+  confirmCashService,
 } from "../../services/pickupService";
 import { ROUTES } from "../../utils/constants";
 import { getErrorMessage, formatDateTime, capitalize } from "../../utils/helpers";
@@ -422,6 +423,19 @@ const Dashboard = () => {
     }
   };
 
+  const handleConfirmCash = async (id) => {
+    setActionLoading(`cash-${id}`);
+    try {
+      await confirmCashService(id);
+      toast.success("Cash received confirmed");
+      loadData();
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const toggleMap = (id) => {
     setMapOpen((prev) => (prev === id ? null : id));
   };
@@ -689,6 +703,12 @@ const Dashboard = () => {
                             <FaRecycle className="h-3 w-3" />
                             {capitalize(req.wasteType)}
                           </span>
+                          {req.paymentMethod && (
+                            <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${req.paymentMethod === "wallet" ? "bg-blue-100 text-blue-700" : "bg-amber-100 text-amber-700"}`}>
+                              <FaMoneyBillWave className="h-3 w-3" />
+                              {capitalize(req.paymentMethod)}
+                            </span>
+                          )}
                         </div>
                         <h4 className="font-semibold text-gray-800 text-sm leading-snug">{req.pickupAddress}</h4>
                         <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-gray-500">
@@ -731,13 +751,28 @@ const Dashboard = () => {
                             color="bg-orange-600 hover:bg-orange-700"
                           />
                         )}
-        {req.status === "weight_verified" && (
+                        {req.status === "weight_verified" && req.paymentMethod === "cash" && !req.cashConfirmed && (
+                          <ActionButton
+                            onClick={() => handleConfirmCash(req._id)}
+                            loading={actionLoading === `cash-${req._id}`}
+                            label="Confirm Cash"
+                            icon={<FaMoneyBillWave />}
+                            color="bg-green-600 hover:bg-green-700"
+                          />
+                        )}
+                        {req.status === "weight_verified" && req.paymentMethod === "cash" && req.cashConfirmed && (
+                          <span className="flex items-center gap-1 text-xs font-semibold text-green-600"><FaCheckCircle /> Cash Confirmed</span>
+                        )}
+        {req.status === "weight_verified" && (req.paymentMethod === "wallet" || (req.paymentMethod === "cash" && req.cashConfirmed)) && (
           <ActionButton
             onClick={() => handleVerifyOtp(req._id)}
             label="Enter OTP"
             icon={<FaClipboardCheck />}
             color="bg-brand-600 hover:bg-brand-700"
           />
+        )}
+        {req.status === "weight_verified" && req.paymentStatus === "awaiting_extra_payment" && (
+          <span className="flex items-center gap-1 text-xs font-semibold text-orange-600"><FaMoneyBillWave /> Awaiting Extra Payment</span>
         )}
                       </div>
                     </div>

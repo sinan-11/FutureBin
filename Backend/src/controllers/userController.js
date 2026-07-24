@@ -6,6 +6,7 @@ import {
   rejectCollector,
   updateAvailability,
   updateLocation,
+  updateBankDetails,
 } from "../services/userService.js";
 
 // ─── Get Current User ─────────────────────────────────────────────────────────
@@ -143,6 +144,39 @@ export const setAvailability = async (req, res) => {
 
     res.status(200).json({
       success: true,
+      data: user,
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// ─── Update Bank Details ──────────────────────────────────────────────────
+
+export const setBankDetails = async (req, res) => {
+  try {
+    const { accountHolderName, accountNumber, ifscCode, bankName } = req.body;
+
+    if (!accountHolderName || !accountNumber || !ifscCode) {
+      return res.status(400).json({
+        success: false,
+        message: "Account holder name, account number, and IFSC code are required",
+      });
+    }
+
+    const user = await updateBankDetails(req.user.id, {
+      accountHolderName,
+      accountNumber,
+      ifscCode,
+      bankName,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Bank details updated successfully",
       data: user,
     });
   } catch (error) {

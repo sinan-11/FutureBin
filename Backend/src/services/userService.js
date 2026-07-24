@@ -469,6 +469,31 @@ export const updateLocation = async (id, longitude, latitude) => {
 
   return user;
 };
+
+// ─── Update Bank Details ──────────────────────────────────────────────────
+
+export const updateBankDetails = async (id, bankDetails) => {
+  const user = await User.findById(id);
+
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  if (user.role !== "collector") {
+    throw new Error("Only collectors can update bank details");
+  }
+
+  user.bankDetails = {
+    accountHolderName: bankDetails.accountHolderName || "",
+    accountNumber: bankDetails.accountNumber || "",
+    ifscCode: bankDetails.ifscCode || "",
+    bankName: bankDetails.bankName || "",
+  };
+
+  await user.save();
+
+  return user;
+};
 // ─── Dashboard Stats ─────────────────────────────────────────────────────────
 
 export const getDashboardStats = async () => {

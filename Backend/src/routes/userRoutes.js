@@ -9,6 +9,7 @@ import {
   rejectCollectorHandler,
   setAvailability,
   setLocation,
+  setBankDetails,
 } from "../controllers/userController.js";
 
 import {
@@ -36,6 +37,13 @@ router.patch(
   protect,
   authorize("collector"),
   setLocation
+);
+
+router.patch(
+  "/bank-details",
+  protect,
+  authorize("collector"),
+  setBankDetails
 );
 
 // ─── Admin Routes ─────────────────────────────────────────────────────────────

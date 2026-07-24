@@ -27,3 +27,30 @@ export const getTransactionsService = async () => {
     throw new Error(getErrorMessage(error));
   }
 };
+
+export const withdrawFundsService = async (amount, bankDetails) => {
+  try {
+    const res = await walletApi.withdrawFunds(amount, bankDetails);
+    return res.data;
+  } catch (error) {
+    throw new Error(getErrorMessage(error));
+  }
+};
+
+export const getWithdrawalsService = async () => {
+  try {
+    const res = await walletApi.getWithdrawals();
+    return res.data.data.withdrawals;
+  } catch (error) {
+    throw new Error(getErrorMessage(error));
+  }
+};
+
+export const getWithdrawalByIdService = async (id) => {
+  try {
+    const res = await walletApi.getWithdrawalById(id);
+    return res.data.data.withdrawal;
+  } catch (error) {
+    throw new Error(getErrorMessage(error));
+  }
+};

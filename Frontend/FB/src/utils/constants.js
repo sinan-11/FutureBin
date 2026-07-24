@@ -87,6 +87,12 @@ export const API_ENDPOINTS = {
   WALLET_CREATE: "/wallet/create",
   WALLET_ME: "/wallet/me",
   WALLET_TRANSACTIONS: "/wallet/transactions",
+  WALLET_WITHDRAW: "/wallet/withdraw",
+  WALLET_WITHDRAWALS: "/wallet/withdrawals",
+  WALLET_WITHDRAWAL_BY_ID: (id) => `/wallet/withdrawals/${id}`,
+
+  // Bank Details
+  UPDATE_BANK_DETAILS: "/users/bank-details",
 
   // Chat
   CHAT_MESSAGES: (pickupId) => `/chat/${pickupId}/messages`,

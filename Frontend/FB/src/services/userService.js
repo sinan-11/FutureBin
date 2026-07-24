@@ -87,6 +87,27 @@ export const updateLocationService = async (
   }
 };
 
+// Update Bank Details
+export const updateBankDetailsService = async (bankDetails) => {
+  store.dispatch(setUserLoading(true));
+
+  try {
+    const response = await userApi.updateBankDetails(bankDetails);
+
+    store.dispatch(setProfile(response.data.data));
+
+    return response.data;
+  } catch (error) {
+    const message = getErrorMessage(error);
+
+    store.dispatch(setUserError(message));
+
+    throw error;
+  } finally {
+    store.dispatch(setUserLoading(false));
+  }
+};
+
 // Admin - Get All Users
 export const getUsersService = async () => {
   store.dispatch(setAdminLoading(true));

@@ -4,6 +4,11 @@ import {
   createWalletHandler,
   getMyWallet,
   getTransactionsHandler,
+  withdrawHandler,
+  getWithdrawalsHandler,
+  getWithdrawalByIdHandler,
+  completeWithdrawalHandler,
+  failWithdrawalHandler,
 } from "../controllers/walletController.js";
 
 import {
@@ -34,6 +39,45 @@ router.get(
   protect,
   authorize("resident", "collector"),
   getTransactionsHandler
+);
+
+// ─── Withdrawal Routes (Collector only) ────────────────────────────────────
+
+router.post(
+  "/withdraw",
+  protect,
+  authorize("collector"),
+  withdrawHandler
+);
+
+router.get(
+  "/withdrawals",
+  protect,
+  authorize("collector"),
+  getWithdrawalsHandler
+);
+
+router.get(
+  "/withdrawals/:id",
+  protect,
+  authorize("collector"),
+  getWithdrawalByIdHandler
+);
+
+// ─── Admin/Internal Routes ─────────────────────────────────────────────────
+
+router.patch(
+  "/withdrawals/:id/complete",
+  protect,
+  authorize("admin"),
+  completeWithdrawalHandler
+);
+
+router.patch(
+  "/withdrawals/:id/fail",
+  protect,
+  authorize("admin"),
+  failWithdrawalHandler
 );
 
 export default router;

@@ -30,6 +30,12 @@ export const updateLocation = (
     }
   );
 
+export const updateBankDetails = (bankDetails) =>
+  axiosInstance.patch(
+    API_ENDPOINTS.UPDATE_BANK_DETAILS,
+    bankDetails
+  );
+
 // Admin
 export const getUsers = () =>
   axiosInstance.get(

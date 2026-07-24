@@ -706,7 +706,7 @@ const Dashboard = () => {
           onSuccess={() => { setExtraPaymentModal(null); loadRequests(); }}
         />
       )}
-      {showWallet && <WalletPanel onClose={() => setShowWallet(false)} />}
+      {showWallet && <WalletPanel onClose={() => setShowWallet(false)} role="resident" />}
     </div>
   );
 };

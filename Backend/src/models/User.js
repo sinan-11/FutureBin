@@ -100,6 +100,14 @@ const userSchema = new mongoose.Schema(
       },
     },
 
+    // Bank Details (for collector withdrawals)
+    bankDetails: {
+      accountHolderName: { type: String, default: "" },
+      accountNumber: { type: String, default: "" },
+      ifscCode: { type: String, default: "" },
+      bankName: { type: String, default: "" },
+    },
+
     // Refresh Token
     refreshToken: {
       type: String,

@@ -51,13 +51,13 @@ const transactionSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["pending", "completed", "failed"],
+      enum: ["pending", "processing", "completed", "failed"],
       default: "pending",
     },
 
     paymentMethod: {
       type: String,
-      enum: ["wallet", "razorpay", "cash"],
+      enum: ["wallet", "razorpay", "cash", "bank_transfer"],
       default: "wallet",
     },
 
@@ -111,6 +111,11 @@ const transactionSchema = new mongoose.Schema(
 
     heldAfter: {
       type: Number,
+      default: null,
+    },
+
+    estimatedCreditTime: {
+      type: Date,
       default: null,
     },
   },

@@ -923,7 +923,7 @@ const Dashboard = () => {
         </div>
       )}
 
-      {showWallet && <WalletPanel onClose={() => setShowWallet(false)} />}
+      {showWallet && <WalletPanel onClose={() => setShowWallet(false)} role="collector" />}
     </div>
   );
 };

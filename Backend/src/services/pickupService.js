@@ -637,6 +637,48 @@ export const verifyActualWeight = async (requestId, collectorId, actualWeight) =
     };
   }
 
+  if (finalPrice < request.reservedAmount) {
+    const releaseAmount = Math.round((request.reservedAmount - finalPrice) * 100) / 100;
+
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+      if (releaseAmount > 0) {
+        await releasePartialHold(request.resident, request._id, releaseAmount, session);
+      }
+
+      request.status = "weight_verified";
+      request.reservedAmount = finalPrice;
+      request.paymentStatus = "reserved";
+
+      const otp = String(crypto.randomInt(100000, 999999));
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+      request.completionOtp = otp;
+      request.completionOtpExpiresAt = expiresAt;
+      request.otpAttempts = 0;
+
+      await request.save({ session });
+      await session.commitTransaction();
+
+      const resident = await User.findById(request.resident);
+      if (resident) {
+        await notifyPickupOtp(resident, otp, request.pickupAddress);
+      }
+
+      const result = request.toObject();
+      if (process.env.NODE_ENV !== "production") {
+        result.otp = otp;
+      }
+
+      return result;
+    } catch (err) {
+      await session.abortTransaction();
+      throw err;
+    } finally {
+      session.endSession();
+    }
+  }
+
   request.status = "weight_verified";
   request.paymentStatus = "reserved";
 
@@ -972,7 +1014,8 @@ export const verifyCompletionOtp = async (requestId, collectorId, otp) => {
         collectorId,
         requestId,
         pickup.finalPrice,
-        session
+        session,
+        pickup.reservedAmount
       );
 
       await PickupRequest.findByIdAndUpdate(

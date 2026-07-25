@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { FaTrashAlt, FaArrowLeft, FaWallet, FaMoneyBill } from "react-icons/fa";
+import { useNavigate, Link } from "react-router-dom";
+import { FaTrashAlt, FaWallet, FaMoneyBill, FaLeaf, FaHome, FaSignOutAlt } from "react-icons/fa";
 import { toast } from "react-toastify";
 
+import useAuth from "../../hooks/useAuth";
 import LocationPickerMap from "../../components/map/LocationPickerMap";
 
 import { createPickupService } from "../../services/pickupService";
+import { logoutService } from "../../services/authService";
 import { ROUTES } from "../../utils/constants";
 import { getErrorMessage } from "../../utils/helpers";
 
@@ -18,6 +20,7 @@ const WASTE_TYPES = [
 ];
 
 const CreateRequest = () => {
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   const [form, setForm] = useState({
@@ -80,7 +83,7 @@ const CreateRequest = () => {
         paymentMethod: form.paymentMethod,
       });
       toast.success("Pickup request created! Nearby collectors have been notified.");
-      navigate(ROUTES.RESIDENT_MY_REQUESTS);
+      navigate(ROUTES.RESIDENT_DASHBOARD);
     } catch (error) {
       toast.error(getErrorMessage(error));
     } finally {
@@ -95,18 +98,44 @@ const CreateRequest = () => {
         : "border-gray-200 focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
     }`;
 
-  return (
-    <div className="mx-auto max-w-xl animate-fade-in pt-2 sm:pt-4">
-      <button
-        onClick={() => navigate(ROUTES.RESIDENT_DASHBOARD)}
-        className="group mb-6 flex items-center gap-2 text-sm font-medium text-gray-400 transition hover:text-gray-700"
-      >
-        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gray-100 transition group-hover:bg-gray-200">
-          <FaArrowLeft className="h-3 w-3" />
-        </div>
-        Back
-      </button>
+  const handleLogout = async () => {
+    await logoutService();
+    toast.success("Logged out");
+    navigate(ROUTES.HOME, { replace: true });
+  };
 
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <header className="bg-brand-700/95 shadow-lg shadow-brand-900/20 backdrop-blur-xl border-b border-white/10">
+        <div className="mx-auto flex max-w-2xl items-center justify-between px-4 py-3 md:px-8 md:py-4">
+          <Link to={ROUTES.HOME} className="flex items-center gap-2 group">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/15 transition group-hover:bg-white/25 group-hover:scale-105">
+              <FaLeaf className="h-4 w-4 text-white" />
+            </div>
+            <span className="text-xl font-extrabold tracking-tight text-white md:text-2xl">
+              Future<span className="text-brand-200">Bin</span>
+            </span>
+          </Link>
+          <div className="flex items-center gap-1 sm:gap-1.5">
+            <Link
+              to={ROUTES.RESIDENT_DASHBOARD}
+              className="hidden sm:flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium text-white/80 transition hover:bg-white/10 hover:text-white"
+            >
+              <FaHome className="h-3.5 w-3.5" />
+              Dashboard
+            </Link>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-1.5 rounded-full p-2 text-white/50 transition hover:bg-red-500/20 hover:text-red-300"
+              title="Logout"
+            >
+              <FaSignOutAlt size={14} />
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-xl px-4 py-6 animate-fade-in">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-800 sm:text-3xl">Request a Pickup</h1>
         <p className="mt-1 text-sm text-gray-400">Fill in the details to schedule a waste collection.</p>
@@ -185,12 +214,12 @@ const CreateRequest = () => {
             </div>
           </div>
 
-          <div>
+          <div className="relative z-0">
             <LocationPickerMap onChange={handleLocationChange} />
             {errors.coordinates && <p className="mt-1 text-xs text-red-500">{errors.coordinates}</p>}
           </div>
 
-          <div>
+          <div className="relative z-10">
             <label htmlFor="description" className="mb-1.5 block text-sm font-medium text-gray-700">Description</label>
             <p className="mb-1.5 text-xs text-gray-400">Optional — special instructions for the collector</p>
             <textarea
@@ -204,7 +233,7 @@ const CreateRequest = () => {
             />
           </div>
 
-          <div>
+          <div className="relative z-10">
             <label className="mb-1.5 block text-sm font-medium text-gray-700">Payment Method</label>
             <p className="mb-1.5 text-xs text-gray-400">How would you like to pay?</p>
             <div className="grid grid-cols-2 gap-3">
@@ -258,7 +287,7 @@ const CreateRequest = () => {
             </div>
           </div>
 
-          <div className="flex flex-col-reverse gap-3 pt-4 sm:flex-row">
+          <div className="relative z-10 flex flex-col-reverse gap-3 pt-4 sm:flex-row">
             <button
               type="button"
               onClick={() => navigate(ROUTES.RESIDENT_DASHBOARD)}
@@ -284,6 +313,7 @@ const CreateRequest = () => {
           </div>
         </form>
       </div>
+      </main>
     </div>
   );
 };

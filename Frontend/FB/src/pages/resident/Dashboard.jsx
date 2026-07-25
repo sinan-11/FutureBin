@@ -3,7 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import {
   FaRecycle, FaPlus, FaTrashAlt, FaTruck, FaWeight,
   FaMoneyBillWave, FaMapMarkerAlt, FaCheckCircle,
-  FaTimesCircle, FaHourglass, FaHome, FaWallet, FaKey, FaMap, FaComments, FaLeaf, FaSignOutAlt,
+  FaTimesCircle, FaHourglass, FaHome, FaWallet, FaKey, FaMap, FaComments, FaLeaf, FaSignOutAlt, FaCalendarAlt,
 } from "react-icons/fa";
 import { toast } from "react-toastify";
 
@@ -160,6 +160,75 @@ const ExtraPaymentModal = ({ request, onClose, onSuccess }) => {
   );
 };
 
+const CancelConfirmationModal = ({ request, onClose, onConfirm }) => {
+  const [cancelling, setCancelling] = useState(false);
+
+  const isBeforeAcceptance = request.status === "broadcasting";
+  const isWalletPayment = request.paymentMethod === "wallet";
+  const feeApplies = !isBeforeAcceptance && isWalletPayment;
+
+  const cancellationFee = feeApplies
+    ? Math.max(
+        Math.round((request.estimatedPrice * 10) / 100 * 100) / 100,
+        5
+      )
+    : 0;
+
+  const handleConfirm = async () => {
+    setCancelling(true);
+    try {
+      await onConfirm();
+    } finally {
+      setCancelling(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+      <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl animate-fade-in text-center">
+        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-red-50">
+          <FaTimesCircle className="h-6 w-6 text-red-600" />
+        </div>
+        <h3 className="text-lg font-bold text-gray-800 mb-2">Cancel Pickup?</h3>
+        {feeApplies ? (
+          <>
+            <p className="text-sm text-gray-500 mb-3">
+              A collector has already been assigned to this pickup. Cancelling now will incur a cancellation fee.
+            </p>
+            <div className="rounded-xl bg-red-50 border border-red-100 p-4 mb-4">
+              <p className="text-xs text-red-400">Cancellation fee</p>
+              <p className="text-2xl font-bold text-red-600">{formatCurrency(cancellationFee)}</p>
+              <p className="text-xs text-red-300 mt-1">This will be deducted from your wallet</p>
+            </div>
+          </>
+        ) : (
+          <p className="text-sm text-gray-500 mb-4">
+            {isBeforeAcceptance
+              ? "Are you sure you want to cancel this pickup request? Your reserved amount will be released."
+              : "Are you sure you want to cancel this pickup request?"}
+          </p>
+        )}
+        <div className="flex gap-3">
+          <button
+            onClick={onClose}
+            disabled={cancelling}
+            className="flex-1 rounded-xl border border-gray-200 py-3 text-sm font-semibold text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+          >
+            Keep Request
+          </button>
+          <button
+            onClick={handleConfirm}
+            disabled={cancelling}
+            className="flex-1 rounded-xl bg-red-600 py-3 text-sm font-bold text-white hover:bg-red-700 disabled:opacity-50"
+          >
+            {cancelling ? "Cancelling..." : "Yes, Cancel"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const OTPModal = ({ requestId, onClose }) => {
   const [otpData, setOtpData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -232,6 +301,7 @@ const Dashboard = () => {
   const [showWallet, setShowWallet] = useState(false);
   const [otpModal, setOtpModal] = useState(null);
   const [extraPaymentModal, setExtraPaymentModal] = useState(null);
+  const [cancelModal, setCancelModal] = useState(null);
   const [collectorLocation, setCollectorLocation] = useState(null);
   const [showTracker, setShowTracker] = useState(false);
   const [routeData, setRouteData] = useState(null);
@@ -404,6 +474,11 @@ const Dashboard = () => {
         toast.info("Collector confirmed cash received.");
         loadRequests();
       }, [loadRequests]),
+
+      "subscription-pickup-created": useCallback((data) => {
+        toast.info("A scheduled pickup has been created from your subscription.");
+        loadRequests();
+      }, [loadRequests]),
     },
     onReconnect: useCallback(() => {
       loadRequests();
@@ -534,6 +609,21 @@ const Dashboard = () => {
           <FaTrashAlt className="text-gray-300" />
         </div>
 
+        {/* ─── Subscriptions link ─── */}
+        <Link
+          to={ROUTES.RESIDENT_MY_SUBSCRIPTIONS}
+          className="rounded-2xl bg-white border border-gray-200 p-4 shadow-sm hover:shadow-md transition flex items-center gap-4"
+        >
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-purple-50">
+            <FaCalendarAlt className="text-purple-600" />
+          </div>
+          <div className="flex-1">
+            <p className="font-bold text-gray-800">Subscriptions</p>
+            <p className="text-sm text-gray-400">Automate recurring waste pickups</p>
+          </div>
+          <FaCalendarAlt className="text-gray-300" />
+        </Link>
+
         {/* ─── Active request (Uber ride tracking style) ─── */}
         {activeRequest ? (
           <section>
@@ -612,14 +702,13 @@ const Dashboard = () => {
                 )}
                 {(activeRequest.status === "broadcasting" || activeRequest.status === "accepted") && (
                   <button
-                    onClick={() => handleCancel(activeRequest._id)}
-                    disabled={cancelling === activeRequest._id}
-                    className="w-full rounded-xl border-2 border-red-200 py-2.5 text-sm font-bold text-red-600 hover:bg-red-50 transition disabled:opacity-50"
+                    onClick={() => setCancelModal(activeRequest)}
+                    className="w-full rounded-xl border-2 border-red-200 py-2.5 text-sm font-bold text-red-600 hover:bg-red-50 transition"
                   >
-                    {cancelling === activeRequest._id ? "Cancelling..." : "Cancel Request"}
+                    Cancel Request
                   </button>
                 )}
-                {activeRequest.status === "accepted" && collectorLocation && (
+                {activeRequest.status === "accepted" && (
                   <button
                     onClick={() => setShowTracker((prev) => !prev)}
                     className="w-full rounded-xl bg-brand-50 border-2 border-brand-200 py-2.5 text-sm font-bold text-brand-700 hover:bg-brand-100 transition"
@@ -699,6 +788,16 @@ const Dashboard = () => {
       </main>
 
       {otpModal && <OTPModal requestId={otpModal} onClose={() => setOtpModal(null)} />}
+      {cancelModal && (
+        <CancelConfirmationModal
+          request={cancelModal}
+          onClose={() => setCancelModal(null)}
+          onConfirm={async () => {
+            await handleCancel(cancelModal._id);
+            setCancelModal(null);
+          }}
+        />
+      )}
       {extraPaymentModal && (
         <ExtraPaymentModal
           request={extraPaymentModal}

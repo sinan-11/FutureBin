@@ -28,6 +28,11 @@ import MyRequests from "./pages/resident/MyRequests";
 import CollectorMyPickups from "./pages/collector/MyPickups";
 import CollectorAvailable from "./pages/collector/AvailableRequests";
 
+// Subscription Pages
+import CreateSubscription from "./pages/resident/CreateSubscription";
+import MySubscriptions from "./pages/resident/MySubscriptions";
+import EditSubscription from "./pages/resident/EditSubscription";
+
 // Admin Pages
 import Residents from "./pages/admin/Residents";
 import ApprovedCollectors from "./pages/admin/ApprovedCollectors";
@@ -95,6 +100,9 @@ function App() {
           <Route path={ROUTES.RESIDENT_DASHBOARD} element={<ResidentDashboard />} />
           <Route path={ROUTES.RESIDENT_CREATE_REQUEST} element={<CreateRequest />} />
           <Route path={ROUTES.RESIDENT_MY_REQUESTS} element={<MyRequests />} />
+          <Route path={ROUTES.RESIDENT_CREATE_SUBSCRIPTION} element={<CreateSubscription />} />
+          <Route path={ROUTES.RESIDENT_MY_SUBSCRIPTIONS} element={<MySubscriptions />} />
+          <Route path={ROUTES.RESIDENT_EDIT_SUBSCRIPTION} element={<EditSubscription />} />
         </Route>
 
         <Route element={<CollectorRoute />}>

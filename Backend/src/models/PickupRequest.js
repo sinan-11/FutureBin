@@ -203,6 +203,12 @@ const pickupRequestSchema = new mongoose.Schema(
       ref: "Transaction",
       default: null,
     },
+
+    subscriptionId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Subscription",
+      default: null,
+    },
   },
   {
     timestamps: true,
@@ -213,6 +219,7 @@ pickupRequestSchema.index({ status: 1 });
 pickupRequestSchema.index({ collector: 1 });
 pickupRequestSchema.index({ resident: 1 });
 pickupRequestSchema.index({ location: "2dsphere" });
+pickupRequestSchema.index({ subscriptionId: 1, status: 1 });
 
 const PickupRequest = mongoose.model(
   "PickupRequest",

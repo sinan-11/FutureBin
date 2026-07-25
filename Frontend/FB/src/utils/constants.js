@@ -26,6 +26,9 @@ export const ROUTES = {
   RESIDENT_CREATE_REQUEST: "/resident/create-request",
   RESIDENT_MY_REQUESTS: "/resident/my-requests",
   RESIDENT_WALLET: "/resident/wallet",
+  RESIDENT_CREATE_SUBSCRIPTION: "/resident/create-subscription",
+  RESIDENT_MY_SUBSCRIPTIONS: "/resident/my-subscriptions",
+  RESIDENT_EDIT_SUBSCRIPTION: "/resident/edit-subscription/:id",
 
   // Collector
   COLLECTOR_DASHBOARD: "/collector/dashboard",
@@ -97,6 +100,17 @@ export const API_ENDPOINTS = {
   // Chat
   CHAT_MESSAGES: (pickupId) => `/chat/${pickupId}/messages`,
   CHAT_READ: (pickupId) => `/chat/${pickupId}/read`,
+
+  // Subscriptions
+  CREATE_SUBSCRIPTION: "/subscriptions",
+  GET_MY_SUBSCRIPTIONS: "/subscriptions",
+  GET_SUBSCRIPTION: (id) => `/subscriptions/${id}`,
+  EDIT_SUBSCRIPTION: (id) => `/subscriptions/${id}`,
+  PAUSE_SUBSCRIPTION: (id) => `/subscriptions/${id}/pause`,
+  RESUME_SUBSCRIPTION: (id) => `/subscriptions/${id}/resume`,
+  CANCEL_SUBSCRIPTION: (id) => `/subscriptions/${id}/cancel`,
+  DELETE_SUBSCRIPTION: (id) => `/subscriptions/${id}`,
+  GET_ALL_SUBSCRIPTIONS: "/subscriptions/admin/all",
 
   // Settings
   GET_SETTINGS: "/settings",

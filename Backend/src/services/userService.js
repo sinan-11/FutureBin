@@ -521,11 +521,20 @@ export const getDashboardStats = async () => {
     isApproved: true,
   }).select("-password");
 
+  let subscriptionStats = null;
+  try {
+    const { getSubscriptionStats } = await import("./subscriptionService.js");
+    subscriptionStats = await getSubscriptionStats();
+  } catch {
+    // subscription model may not exist yet during initial setup
+  }
+
   return {
     residents,
     approvedCollectors,
     pendingCollectors,
     pendingCollectorList,
     approvedCollectorList,
+    subscriptionStats,
   };
 };

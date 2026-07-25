@@ -1,14 +1,17 @@
 import { useEffect, useState, useRef, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import {
   FaPlus, FaCheckCircle, FaTimesCircle,
   FaHourglass, FaTruck, FaWeight,
-  FaMoneyBillWave, FaKey, FaCalendarAlt, FaArrowLeft, FaRecycle,
+  FaMoneyBillWave, FaKey, FaCalendarAlt, FaRecycle,
+  FaLeaf, FaHome, FaSignOutAlt,
 } from "react-icons/fa";
 import { toast } from "react-toastify";
 
+import useAuth from "../../hooks/useAuth";
 import useSocket from "../../hooks/useSocket";
 import { getMyPickupsService, cancelPickupService, getPickupOtpService } from "../../services/pickupService";
+import { logoutService } from "../../services/authService";
 import { ROUTES } from "../../utils/constants";
 import { getErrorMessage, formatDateTime, capitalize } from "../../utils/helpers";
 
@@ -202,6 +205,7 @@ const POLL_INTERVAL = 10000;
 const POLL_FALLBACK_DELAY = 5000;
 
 const MyRequests = () => {
+  const { user } = useAuth();
   const navigate = useNavigate();
   const pollRef = useRef(null);
   const pollTimeoutRef = useRef(null);
@@ -323,18 +327,44 @@ const MyRequests = () => {
     }
   };
 
-  return (
-    <div className="mx-auto max-w-2xl animate-fade-in pt-2 sm:pt-4">
-      <button
-        onClick={() => navigate(ROUTES.RESIDENT_DASHBOARD)}
-        className="group mb-6 flex items-center gap-2 text-sm font-medium text-gray-400 transition hover:text-gray-700"
-      >
-        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gray-100 transition group-hover:bg-gray-200">
-          <FaArrowLeft className="h-3 w-3" />
-        </div>
-        Back
-      </button>
+  const handleLogout = async () => {
+    await logoutService();
+    toast.success("Logged out");
+    navigate(ROUTES.HOME, { replace: true });
+  };
 
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <header className="bg-brand-700/95 shadow-lg shadow-brand-900/20 backdrop-blur-xl border-b border-white/10">
+        <div className="mx-auto flex max-w-2xl items-center justify-between px-4 py-3 md:px-8 md:py-4">
+          <Link to={ROUTES.HOME} className="flex items-center gap-2 group">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/15 transition group-hover:bg-white/25 group-hover:scale-105">
+              <FaLeaf className="h-4 w-4 text-white" />
+            </div>
+            <span className="text-xl font-extrabold tracking-tight text-white md:text-2xl">
+              Future<span className="text-brand-200">Bin</span>
+            </span>
+          </Link>
+          <div className="flex items-center gap-1 sm:gap-1.5">
+            <Link
+              to={ROUTES.RESIDENT_DASHBOARD}
+              className="hidden sm:flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium text-white/80 transition hover:bg-white/10 hover:text-white"
+            >
+              <FaHome className="h-3.5 w-3.5" />
+              Dashboard
+            </Link>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-1.5 rounded-full p-2 text-white/50 transition hover:bg-red-500/20 hover:text-red-300"
+              title="Logout"
+            >
+              <FaSignOutAlt size={14} />
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-2xl px-4 py-6 animate-fade-in">
       <div className="mb-8 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-800 sm:text-3xl">My Requests</h1>
@@ -408,6 +438,7 @@ const MyRequests = () => {
       )}
 
       {otpModal && <OTPModal requestId={otpModal} onClose={() => setOtpModal(null)} />}
+      </main>
     </div>
   );
 };

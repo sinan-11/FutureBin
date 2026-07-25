@@ -45,6 +45,7 @@ const LocationPickerMap = ({ onChange }) => {
   const [address, setAddress] = useState("");
   const [geocodingLoading, setGeocodingLoading] = useState(false);
   const [addressManuallyEdited, setAddressManuallyEdited] = useState(false);
+  const [mapActive, setMapActive] = useState(false);
 
   const debounceRef = useRef(null);
   const abortRef = useRef(null);
@@ -163,7 +164,18 @@ const LocationPickerMap = ({ onChange }) => {
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-      <div style={{ position: "relative", height: "320px" }}>
+      <div className="relative h-[250px] sm:h-[320px]">
+        {!mapActive && (
+          <button
+            type="button"
+            onClick={() => setMapActive(true)}
+            className="absolute inset-0 z-[999] flex flex-col items-center justify-center bg-gray-100/80 backdrop-blur-sm"
+          >
+            <FaMapMarkerAlt className="mb-2 h-8 w-8 text-brand-600" />
+            <p className="text-sm font-semibold text-gray-700">Tap to open map</p>
+            <p className="text-xs text-gray-400">Drag marker to adjust location</p>
+          </button>
+        )}
         <MapContainer
           center={center}
           zoom={15}

@@ -65,3 +65,24 @@ export const sendPickupCompletedToCollector = async (email, name, address, weigh
   const { subject, html } = pickupCompletedCollectorTemplate(name, address, weight, amount, residentName);
   await sendMail({ to: email, subject, html });
 };
+
+// ─── Subscription Emails ──────────────────────────────────────────────────────
+
+import { subscriptionCreatedTemplate } from "../templates/emails/subscriptionCreated.js";
+import { subscriptionInsufficientBalanceTemplate } from "../templates/emails/subscriptionInsufficientBalance.js";
+import { subscriptionPickupSkippedTemplate } from "../templates/emails/subscriptionPickupSkipped.js";
+
+export const sendSubscriptionCreatedEmail = async (email, name, frequency, wasteType, nextRunAt) => {
+  const { subject, html } = subscriptionCreatedTemplate(name, frequency, wasteType, nextRunAt);
+  await sendMail({ to: email, subject, html });
+};
+
+export const sendSubscriptionInsufficientBalanceEmail = async (email, name, frequency) => {
+  const { subject, html } = subscriptionInsufficientBalanceTemplate(name, frequency);
+  await sendMail({ to: email, subject, html });
+};
+
+export const sendSubscriptionPickupSkippedEmail = async (email, name, frequency) => {
+  const { subject, html } = subscriptionPickupSkippedTemplate(name, frequency);
+  await sendMail({ to: email, subject, html });
+};

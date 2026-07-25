@@ -1,15 +1,15 @@
 import { useEffect, useState, useCallback, useRef } from "react";
-import { useNavigate } from "react-router-dom";
 import {
   FaTruck, FaCheckCircle, FaHourglass, FaWeight,
   FaMoneyBillWave, FaUser, FaArrowRight,
-  FaArrowLeft, FaRecycle, FaKey, FaClipboardCheck,
+  FaRecycle, FaKey, FaClipboardCheck,
   FaMap,
 } from "react-icons/fa";
 import { toast } from "react-toastify";
 
 import useAuth from "../../hooks/useAuth";
 import useSocket from "../../hooks/useSocket";
+import CollectorLayout from "../../layouts/CollectorLayout";
 import {
   getAssignedPickupsService,
   arriveAtPickupService,
@@ -19,7 +19,6 @@ import {
   verifyOtpService,
   confirmCashService,
 } from "../../services/pickupService";
-import { ROUTES } from "../../utils/constants";
 import { getErrorMessage, formatDateTime, capitalize } from "../../utils/helpers";
 import { ListSkeleton } from "../../components/Skeleton";
 import OtpInput from "../../components/OtpInput";
@@ -260,7 +259,6 @@ const POLL_FALLBACK_DELAY = 5000;
 
 const MyPickups = () => {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const pollRef = useRef(null);
   const pollTimeoutRef = useRef(null);
   const [loading, setLoading] = useState(true);
@@ -465,136 +463,130 @@ const MyPickups = () => {
   if (loading) return <div className="animate-fade-in"><ListSkeleton count={3} /></div>;
 
   return (
-    <div className="mx-auto max-w-2xl animate-fade-in">
-      <button
-        onClick={() => navigate(ROUTES.COLLECTOR_DASHBOARD)}
-        className="mb-4 flex items-center gap-1.5 text-sm font-medium text-gray-500 transition hover:text-gray-800"
-      >
-        <FaArrowLeft className="h-3.5 w-3.5" />
-        Back
-      </button>
+    <CollectorLayout userName={user?.name}>
+      <div className="mx-auto max-w-2xl animate-fade-in">
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold text-gray-800">My Pickups</h2>
+          <p className="text-sm text-gray-400">Manage your assigned waste collections.</p>
+        </div>
 
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-800">My Pickups</h2>
-        <p className="text-sm text-gray-400">Manage your assigned waste collections.</p>
-      </div>
+        <div className="space-y-8">
+          <Section title="Active" count={pickups.active.length} icon={FaHourglass}>
+            {pickups.active.map((req) => (
+              <PickupCard
+                key={req._id}
+                request={req}
+                onArrive={handleArrive}
+                onVerifyWeight={handleVerifyWeight}
+                onVerifyOtp={handleVerifyOtp}
+                onConfirmCash={handleConfirmCash}
+                onGenerateOtp={handleGenerateOtp}
+                loading={actionLoading}
+                mapOpen={mapOpen}
+                onToggleMap={toggleMap}
+                collectorLocation={user?.location}
+              />
+            ))}
+          </Section>
 
-      <div className="space-y-8">
-        <Section title="Active" count={pickups.active.length} icon={FaHourglass}>
-          {pickups.active.map((req) => (
-            <PickupCard
-              key={req._id}
-              request={req}
-              onArrive={handleArrive}
-              onVerifyWeight={handleVerifyWeight}
-              onVerifyOtp={handleVerifyOtp}
-              onConfirmCash={handleConfirmCash}
-              onGenerateOtp={handleGenerateOtp}
-              loading={actionLoading}
-              mapOpen={mapOpen}
-              onToggleMap={toggleMap}
-              collectorLocation={user?.location}
-            />
-          ))}
-        </Section>
+          <Section title="Completed" count={pickups.completed.length} icon={FaCheckCircle}>
+            {pickups.completed.map((req) => (
+              <PickupCard
+                key={req._id}
+                request={req}
+                onArrive={handleArrive}
+                onVerifyWeight={handleVerifyWeight}
+                onVerifyOtp={handleVerifyOtp}
+                onConfirmCash={handleConfirmCash}
+                onGenerateOtp={handleGenerateOtp}
+                loading={actionLoading}
+                mapOpen={mapOpen}
+                onToggleMap={toggleMap}
+                collectorLocation={user?.location}
+              />
+            ))}
+          </Section>
+        </div>
 
-        <Section title="Completed" count={pickups.completed.length} icon={FaCheckCircle}>
-          {pickups.completed.map((req) => (
-            <PickupCard
-              key={req._id}
-              request={req}
-              onArrive={handleArrive}
-              onVerifyWeight={handleVerifyWeight}
-              onVerifyOtp={handleVerifyOtp}
-              onConfirmCash={handleConfirmCash}
-              onGenerateOtp={handleGenerateOtp}
-              loading={actionLoading}
-              mapOpen={mapOpen}
-              onToggleMap={toggleMap}
-              collectorLocation={user?.location}
-            />
-          ))}
-        </Section>
-      </div>
-
-      {/* Weight Modal */}
-      {weightModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl animate-fade-in">
-            <h3 className="text-lg font-bold text-gray-800 mb-1">Verify Actual Weight</h3>
-            <p className="text-sm text-gray-400 mb-4">Enter the actual weight of the waste collected.</p>
-            <input
-              type="number"
-              step="0.1"
-              min="0.1"
-              value={weightInput}
-              onChange={(e) => setWeightInput(e.target.value)}
-              placeholder="e.g. 14.5"
-              className="w-full rounded-xl border border-gray-200 px-4 py-3 text-lg font-semibold text-gray-800 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-              autoFocus
-            />
-            <div className="mt-4 flex gap-3">
-              <button
-                onClick={() => setWeightModal(null)}
-                className="flex-1 rounded-xl bg-gray-100 py-3 text-sm font-semibold text-gray-600 transition hover:bg-gray-200"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={submitWeight}
-                className="flex-1 rounded-xl bg-brand-600 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-brand-700 active:scale-95"
-              >
-                Confirm
-              </button>
+        {/* Weight Modal */}
+        {weightModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+            <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl animate-fade-in">
+              <h3 className="text-lg font-bold text-gray-800 mb-1">Verify Actual Weight</h3>
+              <p className="text-sm text-gray-400 mb-4">Enter the actual weight of the waste collected.</p>
+              <input
+                type="number"
+                step="0.1"
+                min="0.1"
+                value={weightInput}
+                onChange={(e) => setWeightInput(e.target.value)}
+                placeholder="e.g. 14.5"
+                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-lg font-semibold text-gray-800 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                autoFocus
+              />
+              <div className="mt-4 flex gap-3">
+                <button
+                  onClick={() => setWeightModal(null)}
+                  className="flex-1 rounded-xl bg-gray-100 py-3 text-sm font-semibold text-gray-600 transition hover:bg-gray-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={submitWeight}
+                  className="flex-1 rounded-xl bg-brand-600 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-brand-700 active:scale-95"
+                >
+                  Confirm
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* OTP Modal */}
-      {otpModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl animate-fade-in">
-            <h3 className="text-lg font-bold text-gray-800 mb-1">Enter OTP</h3>
-            <p className="text-sm text-gray-400 mb-4">Ask the resident for the 6-digit OTP to complete the pickup.</p>
-            <OtpInput value={otpInput} onChange={setOtpInput} />
-            <div className="mt-4 flex gap-3">
-              <button
-                onClick={() => handleRegenerateOtp(otpModal)}
-                disabled={actionLoading === `otp-${otpModal}`}
-                className="flex items-center justify-center gap-1.5 w-full rounded-xl bg-amber-500 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-amber-600 active:scale-95 disabled:bg-gray-300 disabled:cursor-not-allowed"
-              >
-                {actionLoading === `otp-${otpModal}` ? (
-                  <span className="flex items-center gap-1.5">
-                    <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                    Generating...
-                  </span>
-                ) : (
-                  <><FaKey className="h-3.5 w-3.5" /> Regenerate OTP</>
-                )}
-              </button>
-            </div>
-            <div className="mt-3 flex gap-3">
-              <button
-                onClick={() => setOtpModal(null)}
-                className="flex-1 rounded-xl bg-gray-100 py-3 text-sm font-semibold text-gray-600 transition hover:bg-gray-200"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={submitOtp}
-                className="flex-1 rounded-xl bg-brand-600 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-brand-700 active:scale-95"
-              >
-                Verify & Complete
-              </button>
+        {/* OTP Modal */}
+        {otpModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+            <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl animate-fade-in">
+              <h3 className="text-lg font-bold text-gray-800 mb-1">Enter OTP</h3>
+              <p className="text-sm text-gray-400 mb-4">Ask the resident for the 6-digit OTP to complete the pickup.</p>
+              <OtpInput value={otpInput} onChange={setOtpInput} />
+              <div className="mt-4 flex gap-3">
+                <button
+                  onClick={() => handleRegenerateOtp(otpModal)}
+                  disabled={actionLoading === `otp-${otpModal}`}
+                  className="flex items-center justify-center gap-1.5 w-full rounded-xl bg-amber-500 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-amber-600 active:scale-95 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                >
+                  {actionLoading === `otp-${otpModal}` ? (
+                    <span className="flex items-center gap-1.5">
+                      <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      Generating...
+                    </span>
+                  ) : (
+                    <><FaKey className="h-3.5 w-3.5" /> Regenerate OTP</>
+                  )}
+                </button>
+              </div>
+              <div className="mt-3 flex gap-3">
+                <button
+                  onClick={() => setOtpModal(null)}
+                  className="flex-1 rounded-xl bg-gray-100 py-3 text-sm font-semibold text-gray-600 transition hover:bg-gray-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={submitOtp}
+                  className="flex-1 rounded-xl bg-brand-600 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-brand-700 active:scale-95"
+                >
+                  Verify & Complete
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </CollectorLayout>
   );
 };
 

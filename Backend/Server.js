@@ -22,6 +22,8 @@ import walletRoutes from "./src/routes/walletRoutes.js";
 import paymentRoutes from "./src/routes/paymentRoutes.js";
 import settingRoutes from "./src/routes/settingRoutes.js";
 import chatRoutes from "./src/routes/chatRoutes.js";
+import subscriptionRoutes from "./src/routes/subscriptionRoutes.js";
+import { startSubscriptionCron } from "./src/cron/subscriptionCron.js";
 
 connectDB().then(() => seedSettings());
 
@@ -55,6 +57,7 @@ app.use("/api/wallet", walletRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/settings", settingRoutes);
 app.use("/api/chat", chatRoutes);
+app.use("/api/subscriptions", subscriptionRoutes);
 
 // 404 Handler
 app.use((req, res) => {
@@ -114,6 +117,9 @@ setInterval(async () => {
     );
   }
 }, EXPIRY_INTERVAL);
+
+// Subscription Cron
+startSubscriptionCron();
 
 // Start Server
 const PORT = process.env.PORT || 5000;

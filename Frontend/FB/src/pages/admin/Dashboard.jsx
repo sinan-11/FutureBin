@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { FaUsers, FaUserCheck, FaClock, FaHome, FaSignOutAlt, FaTimes, FaCog, FaLeaf } from "react-icons/fa";
+import { FaUsers, FaUserCheck, FaClock, FaHome, FaSignOutAlt, FaTimes, FaCog, FaLeaf, FaCalendarAlt } from "react-icons/fa";
 import { toast } from "react-toastify";
 
 import Button from "../../components/Button";
@@ -11,7 +11,7 @@ import { ROUTES } from "../../utils/constants";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
-  const [stats, setStats] = useState({ residents: 0, approvedCollectors: 0, pendingCollectors: 0, pendingCollectorList: [] });
+  const [stats, setStats] = useState({ residents: 0, approvedCollectors: 0, pendingCollectors: 0, pendingCollectorList: [], subscriptionStats: null });
   const [loading, setLoading] = useState(true);
   const [zoomImage, setZoomImage] = useState(null);
   const [zoomLabel, setZoomLabel] = useState("");
@@ -123,6 +123,35 @@ const AdminDashboard = () => {
           <StatCard title="Pending Collectors" value={stats.pendingCollectors} icon={<FaClock />} color="text-warning" onClick={() => navigate(ROUTES.ADMIN_PENDING_COLLECTORS)} />
           <StatCard title="Manage Prices" value="₹" icon={<FaCog />} color="text-brand-600" onClick={() => navigate(ROUTES.ADMIN_SETTINGS)} />
         </div>
+
+        {stats.subscriptionStats && (
+          <div className="mt-6 grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-4">
+            <StatCard
+              title="Active Subscriptions"
+              value={stats.subscriptionStats.activeSubscriptions || 0}
+              icon={<FaCalendarAlt />}
+              color="text-purple-600"
+            />
+            <StatCard
+              title="Weekly Subscriptions"
+              value={stats.subscriptionStats.weeklySubscriptions || 0}
+              icon={<FaCalendarAlt />}
+              color="text-blue-600"
+            />
+            <StatCard
+              title="Monthly Subscriptions"
+              value={stats.subscriptionStats.monthlySubscriptions || 0}
+              icon={<FaCalendarAlt />}
+              color="text-indigo-600"
+            />
+            <StatCard
+              title="Subscription Pickups"
+              value={stats.subscriptionStats.generatedPickups || 0}
+              icon={<FaCalendarAlt />}
+              color="text-green-600"
+            />
+          </div>
+        )}
 
         <div className="mt-6 rounded-xl border border-surface-200 bg-surface p-4 shadow-sm sm:mt-10 sm:p-6">
           <h3 className="mb-4 text-lg font-bold text-surface-800 sm:text-2xl">Pending Collector Approvals</h3>

@@ -117,10 +117,10 @@ const PickupCard = ({
               <FaMoneyBillWave className="h-3.5 w-3.5 text-gray-400" />
               Est: ₹{request.estimatedPrice}
             </span>
-            {request.finalAmount && (
+            {request.finalPrice && (
               <span className="flex items-center gap-1">
                 <FaMoneyBillWave className="h-3.5 w-3.5 text-brand-500" />
-                Final: <span className="font-medium text-brand-600">₹{request.finalAmount}</span>
+                Final: <span className="font-medium text-brand-600">₹{request.finalPrice}</span>
               </span>
             )}
           </div>

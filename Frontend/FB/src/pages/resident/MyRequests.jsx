@@ -114,7 +114,7 @@ const RequestCard = ({ request, onCancel, cancelling }) => {
             </span>
           )}
         </div>
-        {request.status === "weight_verified" && request.paymentStatus !== "awaiting_extra_payment" && (
+        {request.status === "weight_verified" && request.paymentStatus !== "awaiting_extra_payment" && (request.paymentMethod === "wallet" || request.cashConfirmed) && (
           <button
             onClick={() => setShowOtp(true)}
             className="flex items-center gap-1.5 rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 ring-1 ring-amber-200 transition hover:bg-amber-100 active:scale-95"
@@ -147,8 +147,8 @@ const RequestCard = ({ request, onCancel, cancelling }) => {
               <InfoRow icon={FaWeight} label="Actual Weight" value={`${request.actualWeight} kg`} highlight />
             )}
             <InfoRow icon={FaMoneyBillWave} label="Estimated Price" value={`₹${request.estimatedPrice}`} />
-            {request.finalAmount && (
-              <InfoRow icon={FaMoneyBillWave} label="Final Amount" value={`₹${request.finalAmount}`} highlight />
+            {request.finalPrice && (
+              <InfoRow icon={FaMoneyBillWave} label="Final Amount" value={`₹${request.finalPrice}`} highlight />
             )}
             {request.scheduledAt && (
               <InfoRow icon={FaCalendarAlt} label="Scheduled For" value={formatDateTime(request.scheduledAt)} />
@@ -266,9 +266,9 @@ const MyRequests = () => {
       "weight-verified": useCallback((data) => {
         toast.success("Weight verified!");
         loadRequests();
-        const reqId = data?.request?._id;
-        if (reqId) {
-          setTimeout(() => setOtpModal(reqId), 500);
+        const req = data?.request;
+        if (req && req.paymentMethod !== "cash") {
+          setTimeout(() => setOtpModal(req._id), 500);
         }
       }, [loadRequests]),
 

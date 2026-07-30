@@ -124,35 +124,6 @@ const AdminDashboard = () => {
           <StatCard title="Manage Prices" value="₹" icon={<FaCog />} color="text-brand-600" onClick={() => navigate(ROUTES.ADMIN_SETTINGS)} />
         </div>
 
-        {stats.subscriptionStats && (
-          <div className="mt-6 grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-4">
-            <StatCard
-              title="Active Subscriptions"
-              value={stats.subscriptionStats.activeSubscriptions || 0}
-              icon={<FaCalendarAlt />}
-              color="text-purple-600"
-            />
-            <StatCard
-              title="Weekly Subscriptions"
-              value={stats.subscriptionStats.weeklySubscriptions || 0}
-              icon={<FaCalendarAlt />}
-              color="text-blue-600"
-            />
-            <StatCard
-              title="Monthly Subscriptions"
-              value={stats.subscriptionStats.monthlySubscriptions || 0}
-              icon={<FaCalendarAlt />}
-              color="text-indigo-600"
-            />
-            <StatCard
-              title="Subscription Pickups"
-              value={stats.subscriptionStats.generatedPickups || 0}
-              icon={<FaCalendarAlt />}
-              color="text-green-600"
-            />
-          </div>
-        )}
-
         <div className="mt-6 rounded-xl border border-surface-200 bg-surface p-4 shadow-sm sm:mt-10 sm:p-6">
           <h3 className="mb-4 text-lg font-bold text-surface-800 sm:text-2xl">Pending Collector Approvals</h3>
           <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">

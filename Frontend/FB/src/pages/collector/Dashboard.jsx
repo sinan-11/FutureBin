@@ -582,8 +582,8 @@ const Dashboard = () => {
                         </div>
                         <h4 className="font-semibold text-gray-800 text-sm leading-snug">{req.pickupAddress}</h4>
                         <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-gray-500">
-                          <span className="flex items-center gap-1"><FaWeight />{req.estimatedWeight} kg</span>
-                          <span className="flex items-center gap-1"><FaMoneyBillWave />₹{req.estimatedPrice}</span>
+                          <span className="flex items-center gap-1"><FaWeight />{req.actualWeight || req.estimatedWeight} kg</span>
+                          <span className="flex items-center gap-1"><FaMoneyBillWave />₹{req.finalPrice || req.estimatedPrice}</span>
                           {req.scheduledAt && (
                             <span className="flex items-center gap-1"><FaCalendarAlt />{formatDateTime(req.scheduledAt)}</span>
                           )}
@@ -717,8 +717,8 @@ const Dashboard = () => {
                             <span className="flex items-center gap-1"><FaWeight className="text-brand-500" />Actual: <span className="font-medium text-brand-600">{req.actualWeight} kg</span></span>
                           )}
                           <span className="flex items-center gap-1"><FaMoneyBillWave />Est: ₹{req.estimatedPrice}</span>
-                          {req.finalAmount && (
-                            <span className="flex items-center gap-1"><FaMoneyBillWave className="text-brand-500" />Final: <span className="font-medium text-brand-600">₹{req.finalAmount}</span></span>
+                          {req.finalPrice && (
+                            <span className="flex items-center gap-1"><FaMoneyBillWave className="text-brand-500" />Final: <span className="font-medium text-brand-600">₹{req.finalPrice}</span></span>
                           )}
                         </div>
                         {req.resident && (
@@ -831,7 +831,7 @@ const Dashboard = () => {
                       <p className="font-medium text-gray-700 text-sm truncate">{req.pickupAddress}</p>
                       <p className="text-xs text-gray-400 mt-0.5">
                         <FaRecycle className="inline mr-1" />
-                        {capitalize(req.wasteType)} · {req.actualWeight || req.estimatedWeight} kg · ₹{req.finalAmount || req.estimatedPrice}
+                        {capitalize(req.wasteType)} · {req.actualWeight || req.estimatedWeight} kg · ₹{req.finalPrice || req.estimatedPrice}
                       </p>
                     </div>
                     <span className="inline-flex items-center rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-semibold text-green-700 ml-3">

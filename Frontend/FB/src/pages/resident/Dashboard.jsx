@@ -435,9 +435,9 @@ const Dashboard = () => {
       "weight-verified": useCallback((data) => {
         toast.success("Weight verified!");
         loadRequests();
-        const reqId = data?.request?._id;
-        if (reqId) {
-          setTimeout(() => setOtpModal(reqId), 500);
+        const req = data?.request;
+        if (req && req.paymentMethod !== "cash") {
+          setTimeout(() => setOtpModal(req._id), 500);
         }
       }, [loadRequests]),
 
@@ -680,11 +680,11 @@ const Dashboard = () => {
                 )}
 
                 <div className="flex gap-4 text-xs text-gray-500 pt-2 border-t border-gray-100">
-                  <span className="flex items-center gap-1"><FaWeight />{activeRequest.estimatedWeight} kg</span>
-                  <span className="flex items-center gap-1"><FaMoneyBillWave />₹{activeRequest.estimatedPrice}</span>
+                  <span className="flex items-center gap-1"><FaWeight />{activeRequest.actualWeight || activeRequest.estimatedWeight} kg</span>
+                  <span className="flex items-center gap-1"><FaMoneyBillWave />₹{activeRequest.finalPrice || activeRequest.estimatedPrice}</span>
                 </div>
 
-                {activeRequest.status === "weight_verified" && activeRequest.paymentStatus !== "awaiting_extra_payment" && (
+                {activeRequest.status === "weight_verified" && activeRequest.paymentStatus !== "awaiting_extra_payment" && (activeRequest.paymentMethod === "wallet" || activeRequest.cashConfirmed) && (
                   <button
                     onClick={() => setOtpModal(activeRequest._id)}
                     className="w-full rounded-xl bg-amber-50 border-2 border-amber-200 py-2.5 text-sm font-bold text-amber-700 hover:bg-amber-100 transition"

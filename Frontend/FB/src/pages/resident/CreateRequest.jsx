@@ -28,18 +28,12 @@ const CreateRequest = () => {
     estimatedWeight: "",
     pickupAddress: "",
     description: "",
-    scheduledAt: "",
     coordinates: null,
     paymentMethod: "wallet",
   });
 
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
-
-  const now = new Date();
-  const minDateTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
-    .toISOString()
-    .slice(0, 16);
 
   const handleChange = (e) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -61,9 +55,6 @@ const CreateRequest = () => {
     if (!form.estimatedWeight || Number(form.estimatedWeight) <= 0) errs.estimatedWeight = "Weight must be greater than 0";
     if (!form.pickupAddress.trim()) errs.pickupAddress = "Address is required";
     if (!form.coordinates) errs.coordinates = "Please select a pickup location on the map";
-    if (form.scheduledAt && new Date(form.scheduledAt) <= new Date()) {
-      errs.scheduledAt = "Scheduled time must be in the future";
-    }
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -79,7 +70,6 @@ const CreateRequest = () => {
         pickupAddress: form.pickupAddress,
         coordinates: form.coordinates,
         description: form.description,
-        scheduledAt: form.scheduledAt || undefined,
         paymentMethod: form.paymentMethod,
       });
       toast.success("Pickup request created! Nearby collectors have been notified.");
@@ -194,20 +184,6 @@ const CreateRequest = () => {
           </div>
 
           <div className="grid gap-5 sm:grid-cols-2">
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700">Scheduled Date & Time</label>
-              <p className="mb-1.5 text-xs text-gray-400">Optional — leave blank for ASAP</p>
-              <input
-                type="datetime-local"
-                name="scheduledAt"
-                value={form.scheduledAt}
-                onChange={handleChange}
-                min={minDateTime}
-                className={inputClass(errors.scheduledAt)}
-              />
-              {errors.scheduledAt && <p className="mt-1 text-xs text-red-500">{errors.scheduledAt}</p>}
-            </div>
-
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700">Pickup Location</label>
               <p className="mb-1.5 text-xs text-gray-400">Tap the map or drag the marker</p>

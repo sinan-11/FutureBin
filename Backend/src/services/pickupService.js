@@ -960,9 +960,26 @@ export const confirmCashReceived = async (requestId, collectorId) => {
   }
 
   request.cashConfirmed = true;
+
+  const otp = String(crypto.randomInt(100000, 999999));
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+  request.completionOtp = otp;
+  request.completionOtpExpiresAt = expiresAt;
+  request.otpAttempts = 0;
+
   await request.save();
 
-  return request;
+  const resident = await User.findById(request.resident);
+  if (resident) {
+    await notifyPickupOtp(resident, otp, request.pickupAddress);
+  }
+
+  const result = request.toObject();
+  if (process.env.NODE_ENV !== "production") {
+    result.otp = otp;
+  }
+
+  return result;
 };
 
 export const verifyCompletionOtp = async (requestId, collectorId, otp) => {

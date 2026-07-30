@@ -339,9 +339,13 @@ export const verifyWeightHandler = async (req, res) => {
     notifyResidentById(result.resident, "weight-verified", {
       request: result,
     });
-    notifyResidentById(result.resident, "otp-generated", {
-      request: result,
-    });
+
+    if (result.paymentMethod !== "cash") {
+      notifyResidentById(result.resident, "otp-generated", {
+        request: result,
+      });
+    }
+
     notifyCollectorById(req.user.id, "weight-saved", {
       request: result,
     });
@@ -503,6 +507,10 @@ export const confirmCashReceivedHandler = async (req, res) => {
     const request = await confirmCashReceived(req.params.id, req.user.id);
 
     notifyResidentById(request.resident, "cash-confirmed", {
+      request,
+    });
+
+    notifyResidentById(request.resident, "otp-generated", {
       request,
     });
 

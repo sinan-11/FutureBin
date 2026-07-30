@@ -4,7 +4,7 @@ import {
   markAsRead,
 } from "../services/chatService.js";
 
-// ─── Get Chat Messages ──────────────────────────────────────────────────────
+
 
 export const getChatMessages = async (req, res) => {
   try {
@@ -23,7 +23,7 @@ export const getChatMessages = async (req, res) => {
   }
 };
 
-// ─── Send Chat Message (REST fallback) ──────────────────────────────────────
+
 
 export const sendChatMessage = async (req, res) => {
   try {
@@ -63,7 +63,7 @@ export const sendChatMessage = async (req, res) => {
   }
 };
 
-// ─── Mark Messages as Read ──────────────────────────────────────────────────
+
 
 export const markChatRead = async (req, res) => {
   try {

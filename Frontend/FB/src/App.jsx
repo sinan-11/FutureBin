@@ -46,10 +46,18 @@ import ResidentRoute from "./components/ResidentRoute";
 import CollectorRoute from "./components/CollectorRoute";
 import AdminRoute from "./components/AdminRoute";
 
+let authInitStarted = false;
+
 function App() {
   const [initializing, setInitializing] = useState(true);
 
   useEffect(() => {
+    // StrictMode double-invokes effects in dev. The refresh token is single-use
+    // and rotated on every call, so firing it twice concurrently makes the
+    // second call fail and logs the user out. Guard it to run once per load.
+    if (authInitStarted) return;
+    authInitStarted = true;
+
     const initAuth = async () => {
       try {
         const refreshRes = await axios.post(

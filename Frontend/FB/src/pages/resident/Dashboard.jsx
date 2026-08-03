@@ -297,6 +297,8 @@ const Dashboard = () => {
   const nearbyNotifiedRef = useRef(new Set());
 
   const [requests, setRequests] = useState({ current: [], completed: [], cancelled: [] });
+  const requestsRef = useRef(requests);
+  const chatOpenRef = useRef(false);
   const [cancelling, setCancelling] = useState(null);
   const [showWallet, setShowWallet] = useState(false);
   const [otpModal, setOtpModal] = useState(null);
@@ -479,6 +481,48 @@ const Dashboard = () => {
         toast.info("A scheduled pickup has been created from your subscription.");
         loadRequests();
       }, [loadRequests]),
+
+      "chat-message": useCallback((data) => {
+        const msg = data?.message;
+        if (!msg || msg.receiverId !== user?._id) return;
+
+        const pickupId = String(msg.pickupId);
+        const active = requestsRef.current?.current?.[0];
+        if (!active || String(active._id) !== pickupId) return;
+        if (chatOpenRef.current) return;
+
+        setRequests((prev) => ({
+          ...prev,
+          current: prev.current.map((r) =>
+            String(r._id) === pickupId
+              ? { ...r, unreadCount: (r.unreadCount || 0) + 1 }
+              : r
+          ),
+        }));
+
+        const senderName = active.collector?.name || "Collector";
+        toast.info(
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100">
+              <FaComments className="h-5 w-5 text-emerald-600" />
+            </div>
+            <div className="min-w-0">
+              <p className="font-semibold text-gray-800">{senderName}</p>
+              <p className="truncate text-sm text-gray-500">{msg.message}</p>
+            </div>
+          </div>,
+          { autoClose: 6000, onClick: () => {
+            setChatOpen(true);
+            setRequests((prev) => ({
+              ...prev,
+              current: prev.current.map((r) =>
+                String(r._id) === pickupId ? { ...r, unreadCount: 0 } : r
+              ),
+            }));
+          } }
+        );
+        playNotificationSound();
+      }, [user?._id]),
     },
     onReconnect: useCallback(() => {
       loadRequests();
@@ -501,6 +545,14 @@ const Dashboard = () => {
 
     return () => stopPolling();
   }, [isConnected, startPolling, stopPolling]);
+
+  useEffect(() => {
+    requestsRef.current = requests;
+  }, [requests]);
+
+  useEffect(() => {
+    chatOpenRef.current = chatOpen;
+  }, [chatOpen]);
 
   useEffect(() => {
     const current = requests.current[0];
@@ -721,12 +773,31 @@ const Dashboard = () => {
                 )}
                 {["accepted", "collector_arrived", "weight_verified"].includes(activeRequest.status) && activeRequest.collector && (
                   <button
-                    onClick={() => setChatOpen((prev) => !prev)}
+                    onClick={() => {
+                      if (chatOpen) {
+                        setChatOpen(false);
+                      } else {
+                        setChatOpen(true);
+                        setRequests((prev) => ({
+                          ...prev,
+                          current: prev.current.map((r) =>
+                            String(r._id) === String(activeRequest._id)
+                              ? { ...r, unreadCount: 0 }
+                              : r
+                          ),
+                        }));
+                      }
+                    }}
                     className="w-full rounded-xl bg-brand-50 border-2 border-brand-200 py-2.5 text-sm font-bold text-brand-700 hover:bg-brand-100 transition"
                   >
                     <span className="flex items-center justify-center gap-2">
                       <FaComments className="h-4 w-4" />
                       {chatOpen ? "Close Chat" : "Chat with Collector"}
+                      {!chatOpen && activeRequest.unreadCount > 0 && (
+                        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[11px] font-bold text-white">
+                          {activeRequest.unreadCount}
+                        </span>
+                      )}
                     </span>
                   </button>
                 )}

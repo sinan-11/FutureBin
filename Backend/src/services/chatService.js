@@ -63,6 +63,28 @@ export const getMessages = async (pickupId, userId) => {
   return messages;
 };
 
+export const getUnreadCountsByPickups = async (pickupIds, userId) => {
+  const counts = await ChatMessage.aggregate([
+    {
+      $match: {
+        pickupId: { $in: pickupIds },
+        receiverId: userId,
+        read: false,
+      },
+    },
+    {
+      $group: { _id: "$pickupId", count: { $sum: 1 } },
+    },
+  ]);
+
+  const map = {};
+  for (const row of counts) {
+    map[String(row._id)] = row.count;
+  }
+
+  return map;
+};
+
 export const markAsRead = async (pickupId, userId) => {
   await validateParticipant(pickupId, userId);
 

@@ -25,6 +25,29 @@ axiosInstance.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// Single-flight refresh so concurrent 401s never issue parallel calls
+// with the same single-use (rotated) refresh token.
+let refreshPromise = null;
+
+const getRefreshedToken = () => {
+  if (!refreshPromise) {
+    refreshPromise = axios
+      .post(
+        `${API_BASE_URL}${API_ENDPOINTS.REFRESH}`,
+        {},
+        {
+          withCredentials: true,
+        }
+      )
+      .then((response) => response.data.accessToken)
+      .finally(() => {
+        refreshPromise = null;
+      });
+  }
+
+  return refreshPromise;
+};
+
 // Refresh Token Automatically
 axiosInstance.interceptors.response.use(
   (response) => response,
@@ -39,16 +62,8 @@ axiosInstance.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
-        const response = await axios.post(
-          `${API_BASE_URL}${API_ENDPOINTS.REFRESH}`,
-          {},
-          {
-            withCredentials: true,
-          }
-        );
-
         const newAccessToken =
-          response.data.accessToken;
+          await getRefreshedToken();
 
         store.dispatch(
           setAccessToken(newAccessToken)

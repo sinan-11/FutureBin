@@ -49,6 +49,11 @@ const ChatPanel = ({ pickup, socketRef, onClose }) => {
 
   const receiverId = otherParty?._id;
 
+  const sentMessages = messages.filter((m) => m.senderId === user?._id);
+  const hasSentMessages = sentMessages.length > 0;
+  const allMessagesSeen =
+    hasSentMessages && sentMessages.every((m) => m.read);
+
   const scrollToBottom = useCallback((smooth = true) => {
     messagesEndRef.current?.scrollIntoView({
       behavior: smooth ? "smooth" : "instant",
@@ -267,9 +272,23 @@ const ChatPanel = ({ pickup, socketRef, onClose }) => {
                 <h3 className="text-sm font-semibold text-gray-900 truncate">
                   {otherParty?.name || "User"}
                 </h3>
-                <p className="text-xs text-green-600">
-                  {isChatActive ? "Online" : "Offline"}
-                </p>
+                {hasSentMessages ? (
+                  allMessagesSeen ? (
+                    <p className="flex items-center gap-1 text-xs text-sky-600">
+                      <FaCheckDouble className="h-3 w-3" />
+                      Seen
+                    </p>
+                  ) : (
+                    <p className="flex items-center gap-1 text-xs text-gray-400">
+                      <FaCheck className="h-3 w-3" />
+                      Sent
+                    </p>
+                  )
+                ) : (
+                  <p className="text-xs text-green-600">
+                    {isChatActive ? "Online" : "Offline"}
+                  </p>
+                )}
               </div>
             </div>
             <button

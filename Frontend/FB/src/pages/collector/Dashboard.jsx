@@ -63,6 +63,8 @@ const Dashboard = () => {
   const [locationLoading, setLocationLoading] = useState(false);
   const [available, setAvailable] = useState([]);
   const [activePickups, setActivePickups] = useState([]);
+  const activePickupsRef = useRef(activePickups);
+  const chatOpenRef = useRef(null);
   const [completedPickups, setCompletedPickups] = useState([]);
   const [accepting, setAccepting] = useState(null);
   const [rejecting, setRejecting] = useState(null);
@@ -112,6 +114,14 @@ const Dashboard = () => {
       pollTimeoutRef.current = null;
     }
   }, []);
+
+  useEffect(() => {
+    activePickupsRef.current = activePickups;
+  }, [activePickups]);
+
+  useEffect(() => {
+    chatOpenRef.current = chatOpen;
+  }, [chatOpen]);
 
   useEffect(() => {
     if (accessToken) {
@@ -169,6 +179,48 @@ const Dashboard = () => {
         },
         [loadData]
       ),
+
+      "chat-message": useCallback((data) => {
+        const msg = data?.message;
+        if (!msg || msg.receiverId !== user?._id) return;
+
+        const pickupId = String(msg.pickupId);
+        const active = activePickupsRef.current.find(
+          (p) => String(p._id) === pickupId
+        );
+        if (!active) return;
+        if (chatOpenRef.current === pickupId) return;
+
+        setActivePickups((prev) =>
+          prev.map((p) =>
+            String(p._id) === pickupId
+              ? { ...p, unreadCount: (p.unreadCount || 0) + 1 }
+              : p
+          )
+        );
+
+        const senderName = active.resident?.name || "Resident";
+        toast.info(
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100">
+              <FaComments className="h-5 w-5 text-emerald-600" />
+            </div>
+            <div className="min-w-0">
+              <p className="font-semibold text-gray-800">{senderName}</p>
+              <p className="truncate text-sm text-gray-500">{msg.message}</p>
+            </div>
+          </div>,
+          { autoClose: 6000, onClick: () => {
+            setChatOpen(pickupId);
+            setActivePickups((prev) =>
+              prev.map((p) =>
+                String(p._id) === pickupId ? { ...p, unreadCount: 0 } : p
+              )
+            );
+          } }
+        );
+        playNotificationSound();
+      }, [user?._id]),
     },
     onReconnect: useCallback(() => {
       loadData();
@@ -781,11 +833,29 @@ const Dashboard = () => {
                     <div className="mt-3 pt-3 border-t border-gray-100 flex items-center gap-4">
                       {["accepted", "collector_arrived", "weight_verified"].includes(req.status) && (
                         <button
-                          onClick={() => setChatOpen(req._id === chatOpen ? null : req._id)}
+                          onClick={() => {
+                            if (chatOpen === req._id) {
+                              setChatOpen(null);
+                            } else {
+                              setChatOpen(req._id);
+                              setActivePickups((prev) =>
+                                prev.map((p) =>
+                                  String(p._id) === String(req._id)
+                                    ? { ...p, unreadCount: 0 }
+                                    : p
+                                )
+                              );
+                            }
+                          }}
                           className="flex items-center gap-1.5 text-xs font-medium text-brand-600 hover:text-brand-700 transition"
                         >
                           <FaComments className="h-3 w-3" />
                           {chatOpen === req._id ? "Close Chat" : "Chat"}
+                          {chatOpen !== req._id && req.unreadCount > 0 && (
+                            <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                              {req.unreadCount}
+                            </span>
+                          )}
                         </button>
                       )}
                       {req.location?.coordinates && (

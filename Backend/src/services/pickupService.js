@@ -4,7 +4,10 @@ import PickupRequest from "../models/PickupRequest.js";
 import User from "../models/User.js";
 import { sendPickupOtp, sendPickupCompletedToResident, sendPickupCompletedToCollector } from "../utils/sendEmail.js";
 import { getWastePrices, getPaymentConfig } from "./settingService.js";
-import { deleteMessagesByPickup } from "./chatService.js";
+import {
+  deleteMessagesByPickup,
+  getUnreadCountsByPickups,
+} from "./chatService.js";
 import {
   reserveFunds,
   releaseHold,
@@ -254,27 +257,40 @@ export const acceptPickupRequest = async (requestId, collectorId) => {
 export const getResidentRequests = async (residentId) => {
   const requests = await PickupRequest.find({ resident: residentId })
     .populate("collector", "name collectorDetails.phone")
-    .sort({ createdAt: -1 });
+    .sort({ createdAt: -1 })
+    .lean();
 
-  const current = requests.filter(
-    (r) =>
-      r.status === "broadcasting" ||
-      r.status === "accepted" ||
-      r.status === "collector_arrived" ||
-      r.status === "collecting" ||
-      r.status === "weight_verified" ||
-      r.status === "payment_pending" ||
-      r.status === "paid" ||
-      r.status === "awaiting_extra_payment"
+  const unreadMap = await getUnreadCountsByPickups(
+    requests.map((r) => r._id),
+    residentId
   );
 
-  const completed = requests.filter(
-    (r) => r.status === "completed"
-  );
+  const attachUnread = (r) => ({
+    ...r,
+    unreadCount: unreadMap[String(r._id)] || 0,
+  });
 
-  const cancelled = requests.filter(
-    (r) => r.status === "cancelled" || r.status === "expired"
-  );
+  const current = requests
+    .filter(
+      (r) =>
+        r.status === "broadcasting" ||
+        r.status === "accepted" ||
+        r.status === "collector_arrived" ||
+        r.status === "collecting" ||
+        r.status === "weight_verified" ||
+        r.status === "payment_pending" ||
+        r.status === "paid" ||
+        r.status === "awaiting_extra_payment"
+    )
+    .map(attachUnread);
+
+  const completed = requests
+    .filter((r) => r.status === "completed")
+    .map(attachUnread);
+
+  const cancelled = requests
+    .filter((r) => r.status === "cancelled" || r.status === "expired")
+    .map(attachUnread);
 
   return { current, completed, cancelled };
 };
@@ -296,22 +312,35 @@ export const getCollectorRequests = async (collectorId) => {
     },
   })
     .populate("resident", "name email")
-    .sort({ createdAt: -1 });
+    .sort({ createdAt: -1 })
+    .lean();
 
-  const active = requests.filter(
-    (r) =>
-      r.status === "accepted" ||
-      r.status === "collector_arrived" ||
-      r.status === "collecting" ||
-      r.status === "weight_verified" ||
-      r.status === "payment_pending" ||
-      r.status === "paid" ||
-      r.status === "awaiting_extra_payment"
+  const unreadMap = await getUnreadCountsByPickups(
+    requests.map((r) => r._id),
+    collectorId
   );
 
-  const completed = requests.filter(
-    (r) => r.status === "completed"
-  );
+  const attachUnread = (r) => ({
+    ...r,
+    unreadCount: unreadMap[String(r._id)] || 0,
+  });
+
+  const active = requests
+    .filter(
+      (r) =>
+        r.status === "accepted" ||
+        r.status === "collector_arrived" ||
+        r.status === "collecting" ||
+        r.status === "weight_verified" ||
+        r.status === "payment_pending" ||
+        r.status === "paid" ||
+        r.status === "awaiting_extra_payment"
+    )
+    .map(attachUnread);
+
+  const completed = requests
+    .filter((r) => r.status === "completed")
+    .map(attachUnread);
 
   return { active, completed };
 };

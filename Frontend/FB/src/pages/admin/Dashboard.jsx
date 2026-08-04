@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { FaUsers, FaUserCheck, FaClock, FaHome, FaSignOutAlt, FaTimes, FaCog, FaLeaf, FaCalendarAlt } from "react-icons/fa";
+import { useNavigate } from "react-router-dom";
+import { FaUsers, FaUserCheck, FaClock, FaTimes, FaCog, FaTachometerAlt } from "react-icons/fa";
 import { toast } from "react-toastify";
 
 import Button from "../../components/Button";
-import StatCard from "./StatCard";
+import StatCard from "../../components/StatCard";
+import PageHeader from "../../components/PageHeader";
+import Loader from "../../components/Loader";
+import AdminLayout from "../../layouts/AdminLayout";
 import { approveCollector, rejectCollector, getDashboardStats } from "../../services/dashboardService";
-import { logoutService } from "../../services/authService";
 import { ROUTES } from "../../utils/constants";
 
 const AdminDashboard = () => {
@@ -55,8 +57,6 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleLogout = async () => { await logoutService(); toast.success("Logged out"); navigate(ROUTES.LOGIN); };
-
   const openZoom = (src, label) => { setZoomImage(src); setZoomLabel(label); };
 
   useEffect(() => {
@@ -67,64 +67,29 @@ const AdminDashboard = () => {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-surface-50">
-        <div className="h-10 w-10 animate-spin rounded-full border-4 border-brand-400 border-t-transparent"></div>
-      </div>
+      <AdminLayout>
+        <Loader fullScreen={false} label="Loading dashboard..." />
+      </AdminLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-surface-50">
-      <header className="bg-brand-700/95 shadow-lg shadow-brand-900/20 backdrop-blur-xl border-b border-white/10">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 md:px-8 md:py-4">
-          <Link to={ROUTES.HOME} className="flex items-center gap-2 group">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/15 transition group-hover:bg-white/25 group-hover:scale-105">
-              <FaLeaf className="h-4 w-4 text-white" />
-            </div>
-            <span className="text-xl font-extrabold tracking-tight text-white md:text-2xl">
-              Future<span className="text-brand-200">Bin</span>
-            </span>
-          </Link>
-          <div className="flex items-center gap-1 sm:gap-1.5">
-            <Link
-              to={ROUTES.HOME}
-              className="hidden sm:flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium text-white/80 transition hover:bg-white/10 hover:text-white"
-            >
-              <FaHome className="h-3.5 w-3.5" />
-              Home
-            </Link>
-            <div className="rounded-full bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/80">
-              Admin
-            </div>
-            <button
-              onClick={() => navigate(ROUTES.ADMIN_SETTINGS)}
-              className="flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium text-white/80 transition hover:bg-white/10 hover:text-white"
-            >
-              <FaCog className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Settings</span>
-            </button>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-1.5 rounded-full p-2 text-white/50 transition hover:bg-red-500/20 hover:text-red-300"
-              title="Logout"
-            >
-              <FaSignOutAlt size={14} />
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-7xl p-4 md:p-8">
-        <h2 className="mb-8 text-3xl font-bold text-brand-700 md:text-4xl">Admin Dashboard</h2>
+    <AdminLayout>
+      <div className="animate-fade-in pb-8">
+        <PageHeader
+          title="Admin Dashboard"
+          subtitle="Overview of your recycling community"
+          icon={FaTachometerAlt}
+        />
 
         <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-4">
-          <StatCard title="Residents" value={stats.residents} icon={<FaUsers />} color="text-info" onClick={() => navigate(ROUTES.ADMIN_RESIDENTS)} />
-          <StatCard title="Approved Collectors" value={stats.approvedCollectors} icon={<FaUserCheck />} color="text-success" onClick={() => navigate(ROUTES.ADMIN_APPROVED_COLLECTORS)} />
-          <StatCard title="Pending Collectors" value={stats.pendingCollectors} icon={<FaClock />} color="text-warning" onClick={() => navigate(ROUTES.ADMIN_PENDING_COLLECTORS)} />
-          <StatCard title="Manage Prices" value="₹" icon={<FaCog />} color="text-brand-600" onClick={() => navigate(ROUTES.ADMIN_SETTINGS)} />
+          <StatCard label="Residents" value={stats.residents} icon={FaUsers} accent="brand" onClick={() => navigate(ROUTES.ADMIN_RESIDENTS)} />
+          <StatCard label="Approved Collectors" value={stats.approvedCollectors} icon={FaUserCheck} accent="teal" onClick={() => navigate(ROUTES.ADMIN_APPROVED_COLLECTORS)} />
+          <StatCard label="Pending Collectors" value={stats.pendingCollectors} icon={FaClock} accent="amber" onClick={() => navigate(ROUTES.ADMIN_PENDING_COLLECTORS)} />
+          <StatCard label="Manage Prices" value="₹" icon={FaCog} accent="violet" onClick={() => navigate(ROUTES.ADMIN_SETTINGS)} />
         </div>
 
-        <div className="mt-6 rounded-xl border border-surface-200 bg-surface p-4 shadow-sm sm:mt-10 sm:p-6">
+        <div className="card mt-6 p-4 sm:p-6">
           <h3 className="mb-4 text-lg font-bold text-surface-800 sm:text-2xl">Pending Collector Approvals</h3>
           <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
             <table className="min-w-full border-collapse">
@@ -170,7 +135,7 @@ const AdminDashboard = () => {
             </table>
           </div>
         </div>
-      </main>
+      </div>
 
       {zoomImage && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => { setZoomImage(null); setZoomLabel(""); }}>
@@ -183,7 +148,7 @@ const AdminDashboard = () => {
           </div>
         </div>
       )}
-    </div>
+    </AdminLayout>
   );
 };
 

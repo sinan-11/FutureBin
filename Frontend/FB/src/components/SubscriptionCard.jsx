@@ -5,9 +5,9 @@ import {
 import { formatDateTime } from "../utils/helpers";
 
 const STATUS_STYLES = {
-  active: { label: "Active", color: "bg-green-100 text-green-700" },
-  paused: { label: "Paused", color: "bg-yellow-100 text-yellow-700" },
-  cancelled: { label: "Cancelled", color: "bg-red-100 text-red-600" },
+  active: { label: "Active", color: "bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300" },
+  paused: { label: "Paused", color: "bg-warning-50 text-warning-700 dark:bg-warning-500/10 dark:text-warning-300" },
+  cancelled: { label: "Cancelled", color: "bg-danger-50 text-danger-600 dark:bg-danger-500/10 dark:text-danger-400" },
 };
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -21,15 +21,15 @@ const SubscriptionCard = ({ subscription, onEdit, onPause, onResume, onCancel, o
       : `Day ${subscription.dayOfMonth} of each month at ${subscription.pickupTime}`;
 
   return (
-    <div className="rounded-2xl bg-white border border-gray-200 p-4 shadow-sm animate-fade-in">
+    <div className="card card-hover animate-fade-in p-4">
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-2">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-50">
-            <FaCalendarAlt className="h-5 w-5 text-brand-600" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-50 dark:bg-brand-500/10">
+            <FaCalendarAlt className="h-5 w-5 text-brand-600 dark:text-brand-400" />
           </div>
           <div>
-            <p className="text-sm font-bold text-gray-800 capitalize">{subscription.frequency} Subscription</p>
-            <p className="text-xs text-gray-400">{scheduleLabel}</p>
+            <p className="text-sm font-bold text-surface-800 capitalize">{subscription.frequency} Subscription</p>
+            <p className="text-xs text-surface-400 dark:text-surface-500">{scheduleLabel}</p>
           </div>
         </div>
         <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${statusStyle.color}`}>
@@ -39,31 +39,31 @@ const SubscriptionCard = ({ subscription, onEdit, onPause, onResume, onCancel, o
 
       <div className="grid grid-cols-2 gap-3 mb-3">
         <div className="flex items-center gap-2">
-          <FaRecycle className="h-3.5 w-3.5 text-gray-400" />
+          <FaRecycle className="h-3.5 w-3.5 text-surface-400 dark:text-surface-500" />
           <div>
-            <p className="text-[10px] text-gray-400 uppercase tracking-wider">Waste Type</p>
-            <p className="text-sm font-medium text-gray-700 capitalize">{subscription.wasteType}</p>
+            <p className="text-[10px] text-surface-400 uppercase tracking-wider dark:text-surface-500">Waste Type</p>
+            <p className="text-sm font-medium text-surface-700 capitalize dark:text-surface-300">{subscription.wasteType}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <FaWeight className="h-3.5 w-3.5 text-gray-400" />
+          <FaWeight className="h-3.5 w-3.5 text-surface-400 dark:text-surface-500" />
           <div>
-            <p className="text-[10px] text-gray-400 uppercase tracking-wider">Est. Weight</p>
-            <p className="text-sm font-medium text-gray-700">{subscription.estimatedWeight} kg</p>
+            <p className="text-[10px] text-surface-400 uppercase tracking-wider dark:text-surface-500">Est. Weight</p>
+            <p className="text-sm font-medium text-surface-700 dark:text-surface-300">{subscription.estimatedWeight} kg</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <FaMoneyBillWave className="h-3.5 w-3.5 text-gray-400" />
+          <FaMoneyBillWave className="h-3.5 w-3.5 text-surface-400 dark:text-surface-500" />
           <div>
-            <p className="text-[10px] text-gray-400 uppercase tracking-wider">Payment</p>
-            <p className="text-sm font-medium text-gray-700 capitalize">{subscription.paymentMethod}</p>
+            <p className="text-[10px] text-surface-400 uppercase tracking-wider dark:text-surface-500">Payment</p>
+            <p className="text-sm font-medium text-surface-700 capitalize dark:text-surface-300">{subscription.paymentMethod}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <FaClock className="h-3.5 w-3.5 text-gray-400" />
+          <FaClock className="h-3.5 w-3.5 text-surface-400 dark:text-surface-500" />
           <div>
-            <p className="text-[10px] text-gray-400 uppercase tracking-wider">Next Pickup</p>
-            <p className="text-sm font-medium text-gray-700">
+            <p className="text-[10px] text-surface-400 uppercase tracking-wider dark:text-surface-500">Next Pickup</p>
+            <p className="text-sm font-medium text-surface-700 dark:text-surface-300">
               {subscription.nextRunAt ? formatDateTime(subscription.nextRunAt) : "N/A"}
             </p>
           </div>
@@ -71,35 +71,35 @@ const SubscriptionCard = ({ subscription, onEdit, onPause, onResume, onCancel, o
       </div>
 
       {subscription.lastPickupRequest && (
-        <div className="mb-3 rounded-xl bg-gray-50 p-2.5 text-xs text-gray-500">
+        <div className="mb-3 rounded-xl bg-surface-100/60 p-2.5 text-xs text-surface-500 dark:bg-surface-200/40 dark:text-surface-400">
           Last pickup: {subscription.lastPickupRequest.status} — {formatDateTime(subscription.lastPickupRequest.completedAt)}
         </div>
       )}
 
       {subscription.consecutiveFailures > 0 && (
-        <div className="mb-3 rounded-xl bg-red-50 p-2.5 text-xs text-red-600">
+        <div className="mb-3 rounded-xl bg-danger-50 p-2.5 text-xs text-danger-600 dark:bg-danger-500/10 dark:text-danger-400">
           {subscription.consecutiveFailures} consecutive failure(s) — wallet may have insufficient balance
         </div>
       )}
 
-      <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
+      <div className="flex flex-wrap gap-2 pt-2 border-t border-surface-100 dark:border-surface-200/60">
         {subscription.status === "active" && (
           <>
             <button
               onClick={() => onEdit(subscription)}
-              className="flex items-center gap-1.5 rounded-lg bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700 hover:bg-brand-100 transition"
+              className="flex items-center gap-1.5 rounded-lg bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700 hover:bg-brand-100 transition dark:bg-brand-500/10 dark:text-brand-300 dark:hover:bg-brand-500/20"
             >
               <FaEdit className="h-3 w-3" /> Edit
             </button>
             <button
               onClick={() => onPause(subscription._id)}
-              className="flex items-center gap-1.5 rounded-lg bg-yellow-50 px-3 py-1.5 text-xs font-semibold text-yellow-700 hover:bg-yellow-100 transition"
+              className="flex items-center gap-1.5 rounded-lg bg-warning-50 px-3 py-1.5 text-xs font-semibold text-warning-700 hover:bg-warning-100 transition dark:bg-warning-500/10 dark:text-warning-300 dark:hover:bg-warning-500/20"
             >
               <FaPause className="h-3 w-3" /> Pause
             </button>
             <button
               onClick={() => onCancel(subscription._id)}
-              className="flex items-center gap-1.5 rounded-lg bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-100 transition"
+              className="flex items-center gap-1.5 rounded-lg bg-danger-50 px-3 py-1.5 text-xs font-semibold text-danger-600 hover:bg-danger-100 transition dark:bg-danger-500/10 dark:text-danger-400 dark:hover:bg-danger-500/20"
             >
               <FaTimes className="h-3 w-3" /> Cancel
             </button>
@@ -109,13 +109,13 @@ const SubscriptionCard = ({ subscription, onEdit, onPause, onResume, onCancel, o
           <>
             <button
               onClick={() => onResume(subscription._id)}
-              className="flex items-center gap-1.5 rounded-lg bg-green-50 px-3 py-1.5 text-xs font-semibold text-green-700 hover:bg-green-100 transition"
+              className="flex items-center gap-1.5 rounded-lg bg-success-50 px-3 py-1.5 text-xs font-semibold text-success-700 hover:bg-success-100 transition dark:bg-success-500/10 dark:text-success-300 dark:hover:bg-success-500/20"
             >
               <FaPlay className="h-3 w-3" /> Resume
             </button>
             <button
               onClick={() => onCancel(subscription._id)}
-              className="flex items-center gap-1.5 rounded-lg bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-100 transition"
+              className="flex items-center gap-1.5 rounded-lg bg-danger-50 px-3 py-1.5 text-xs font-semibold text-danger-600 hover:bg-danger-100 transition dark:bg-danger-500/10 dark:text-danger-400 dark:hover:bg-danger-500/20"
             >
               <FaTimes className="h-3 w-3" /> Cancel
             </button>
@@ -124,7 +124,7 @@ const SubscriptionCard = ({ subscription, onEdit, onPause, onResume, onCancel, o
         {subscription.status === "cancelled" && (
           <button
             onClick={() => onDelete(subscription._id)}
-            className="flex items-center gap-1.5 rounded-lg bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-100 transition"
+            className="flex items-center gap-1.5 rounded-lg bg-danger-50 px-3 py-1.5 text-xs font-semibold text-danger-600 hover:bg-danger-100 transition dark:bg-danger-500/10 dark:text-danger-400 dark:hover:bg-danger-500/20"
           >
             <FaTrashAlt className="h-3 w-3" /> Delete
           </button>

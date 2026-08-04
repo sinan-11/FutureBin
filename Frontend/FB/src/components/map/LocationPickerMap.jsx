@@ -163,17 +163,17 @@ const LocationPickerMap = ({ onChange }) => {
   };
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+    <div className="rounded-2xl border border-surface-200 bg-white dark:bg-surface-100 shadow-sm overflow-hidden">
       <div className="relative h-[250px] sm:h-[320px]">
         {!mapActive && (
           <button
             type="button"
             onClick={() => setMapActive(true)}
-            className="absolute inset-0 z-[999] flex flex-col items-center justify-center bg-gray-100/80 backdrop-blur-sm"
+            className="absolute inset-0 z-[999] flex flex-col items-center justify-center bg-surface-100/80 dark:bg-surface-100/80 backdrop-blur-sm"
           >
             <FaMapMarkerAlt className="mb-2 h-8 w-8 text-brand-600" />
-            <p className="text-sm font-semibold text-gray-700">Tap to open map</p>
-            <p className="text-xs text-gray-400">Drag marker to adjust location</p>
+            <p className="text-sm font-semibold text-surface-700 dark:text-surface-300">Tap to open map</p>
+            <p className="text-xs text-surface-400 dark:text-surface-500">Drag marker to adjust location</p>
           </button>
         )}
         <MapContainer
@@ -206,24 +206,24 @@ const LocationPickerMap = ({ onChange }) => {
           type="button"
           onClick={handleUseCurrentLocation}
           disabled={btnLoading}
-          className="flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm font-semibold text-gray-600 transition hover:bg-gray-100 active:scale-[0.97] disabled:opacity-50"
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-surface-200 bg-surface-50 dark:bg-surface-200/40 px-4 py-2.5 text-sm font-semibold text-surface-600 dark:text-surface-500 transition hover:bg-surface-100 dark:hover:bg-surface-200 active:scale-[0.97] disabled:opacity-50"
         >
           <FaCrosshairs className="h-3.5 w-3.5" />
           {btnLoading ? "Detecting..." : "Use Current Location"}
         </button>
 
         <div className="relative">
-          <FaMapMarkerAlt className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <FaMapMarkerAlt className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-surface-400 dark:text-surface-500" />
           <input
             type="text"
             value={address}
             onChange={handleAddressChange}
             placeholder={geocodingLoading ? "Finding address..." : "Pickup address"}
-            className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-9 pr-4 text-sm outline-none transition-all focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
+            className="w-full rounded-xl border border-surface-200 bg-white dark:bg-surface-100 py-2.5 pl-9 pr-4 text-sm outline-none transition-all focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15"
           />
           {geocodingLoading && (
             <div className="absolute right-3 top-1/2 -translate-y-1/2">
-              <svg className="h-4 w-4 animate-spin text-gray-400" viewBox="0 0 24 24">
+              <svg className="h-4 w-4 animate-spin text-surface-400 dark:text-surface-500" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
               </svg>

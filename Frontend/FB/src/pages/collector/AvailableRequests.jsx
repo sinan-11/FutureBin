@@ -1,10 +1,9 @@
 import { useEffect, useState, useRef, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
 import {
   FaBroadcastTower, FaWeight, FaMoneyBillWave,
-  FaUser, FaRecycle, FaArrowLeft,
-  FaArrowRight, FaMapMarkerAlt, FaTimes,
-  FaCalendarAlt, FaClock, FaInfoCircle,
+  FaUser, FaRecycle, FaSyncAlt,
+  FaArrowRight, FaTimes,
+  FaCalendarAlt, FaInfoCircle,
 } from "react-icons/fa";
 import { toast } from "react-toastify";
 
@@ -15,27 +14,24 @@ import {
   rejectPickupService,
 } from "../../services/pickupService";
 import useSocket from "../../hooks/useSocket";
-import { ROUTES } from "../../utils/constants";
+import useAuth from "../../hooks/useAuth";
 import { getErrorMessage, formatDateTime, capitalize } from "../../utils/helpers";
 import { playNotificationSound } from "../../utils/sound";
+import CollectorLayout from "../../layouts/CollectorLayout";
+import PageHeader from "../../components/PageHeader";
+import EmptyState from "../../components/EmptyState";
+import Button from "../../components/Button";
 import { ListSkeleton } from "../../components/Skeleton";
 
 const POLL_INTERVAL = 10000;
 
 const WASTE_COLORS = {
-  recyclable: { bg: "bg-green-50", text: "text-green-700", ring: "ring-green-200", dot: "bg-green-500" },
-  organic: { bg: "bg-amber-50", text: "text-amber-700", ring: "ring-amber-200", dot: "bg-amber-500" },
-  hazardous: { bg: "bg-red-50", text: "text-red-700", ring: "ring-red-200", dot: "bg-red-500" },
-  electronic: { bg: "bg-purple-50", text: "text-purple-700", ring: "ring-purple-200", dot: "bg-purple-500" },
-  general: { bg: "bg-blue-50", text: "text-blue-700", ring: "ring-blue-200", dot: "bg-blue-500" },
+  recyclable: { bg: "bg-success-50 dark:bg-success-500/10", text: "text-success-700 dark:text-success-300", ring: "ring-success-200 dark:ring-success-500/20", dot: "bg-success-500" },
+  organic: { bg: "bg-warning-50 dark:bg-warning-500/10", text: "text-warning-700 dark:text-warning-300", ring: "ring-warning-200 dark:ring-warning-500/20", dot: "bg-warning-500" },
+  hazardous: { bg: "bg-danger-50 dark:bg-danger-500/10", text: "text-danger-700 dark:text-danger-300", ring: "ring-danger-200 dark:ring-danger-500/20", dot: "bg-danger-500" },
+  electronic: { bg: "bg-purple-50 dark:bg-purple-500/10", text: "text-purple-700 dark:text-purple-300", ring: "ring-purple-200 dark:ring-purple-500/20", dot: "bg-purple-500" },
+  general: { bg: "bg-info-50 dark:bg-info-500/10", text: "text-info-700 dark:text-info-300", ring: "ring-info-200 dark:ring-info-500/20", dot: "bg-info-500" },
 };
-
-const Spinner = () => (
-  <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24">
-    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-  </svg>
-);
 
 const RequestCard = ({ req, onAccept, onReject, accepting, rejecting, hasActivePickup }) => {
   const wasteStyle = WASTE_COLORS[req.wasteType] || WASTE_COLORS.general;
@@ -43,96 +39,84 @@ const RequestCard = ({ req, onAccept, onReject, accepting, rejecting, hasActiveP
   const acceptDisabled = loading || hasActivePickup;
 
   return (
-    <div className="group rounded-2xl bg-white border border-gray-100 p-5 shadow-sm transition-all hover:shadow-md hover:border-gray-200 hover:-translate-y-0.5">
-      <div className="flex items-start justify-between gap-4 mb-4">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ring-1 ${wasteStyle.bg} ${wasteStyle.text} ${wasteStyle.ring}`}>
-            <span className={`h-1.5 w-1.5 rounded-full ${wasteStyle.dot}`} />
-            {capitalize(req.wasteType)}
+    <div className="card card-hover p-5">
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ring-1 ${wasteStyle.bg} ${wasteStyle.text} ${wasteStyle.ring}`}>
+          <span className={`h-1.5 w-1.5 rounded-full ${wasteStyle.dot}`} />
+          {capitalize(req.wasteType)}
+        </span>
+        <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 ring-1 ring-blue-200 dark:bg-blue-500/10 dark:text-blue-300 dark:ring-blue-500/20">
+          <FaBroadcastTower className="h-3 w-3" />
+          Available
+        </span>
+        {req.estimatedWeight >= 10 && (
+          <span className="inline-flex items-center rounded-full bg-orange-50 px-2.5 py-1 text-xs font-semibold text-orange-700 ring-1 ring-orange-200 dark:bg-orange-500/10 dark:text-orange-300 dark:ring-orange-500/20">
+            Bulk
           </span>
-          <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 ring-1 ring-blue-200">
-            <FaBroadcastTower className="h-3 w-3" />
-            Available
-          </span>
-          {req.estimatedWeight >= 10 && (
-            <span className="inline-flex items-center rounded-full bg-orange-50 px-2.5 py-1 text-xs font-semibold text-orange-700 ring-1 ring-orange-200">
-              Bulk
-            </span>
-          )}
-        </div>
+        )}
       </div>
 
-      <h3 className="font-semibold text-gray-800 leading-snug mb-3">
+      <h3 className="mb-3 font-semibold leading-snug text-surface-800 dark:text-surface-800">
         {req.pickupAddress}
       </h3>
 
-      <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-gray-500 mb-3">
+      <div className="mb-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-surface-500 dark:text-surface-400">
         <span className="flex items-center gap-1.5">
-          <FaWeight className="h-3.5 w-3.5 text-gray-400" />
-          <span className="font-medium text-gray-600">{req.estimatedWeight}</span> kg
+          <FaWeight className="h-3.5 w-3.5 text-surface-400 dark:text-surface-500" />
+          <span className="font-medium text-surface-600 dark:text-surface-500">{req.estimatedWeight}</span> kg
         </span>
         <span className="flex items-center gap-1.5">
-          <FaMoneyBillWave className="h-3.5 w-3.5 text-gray-400" />
-          <span className="font-medium text-gray-600">₹{req.estimatedPrice}</span>
+          <FaMoneyBillWave className="h-3.5 w-3.5 text-surface-400 dark:text-surface-500" />
+          <span className="font-medium text-surface-600 dark:text-surface-500">₹{req.estimatedPrice}</span>
         </span>
         <span className="flex items-center gap-1.5">
-          <FaCalendarAlt className="h-3.5 w-3.5 text-gray-400" />
+          <FaCalendarAlt className="h-3.5 w-3.5 text-surface-400 dark:text-surface-500" />
           {req.scheduledAt ? formatDateTime(req.scheduledAt) : "ASAP"}
         </span>
       </div>
 
       {req.description && (
-        <p className="text-sm text-gray-400 italic mb-3 line-clamp-2">{req.description}</p>
+        <p className="mb-3 line-clamp-2 text-sm italic text-surface-400 dark:text-surface-500">{req.description}</p>
       )}
 
-      <div className="flex items-center justify-between gap-4 pt-3 border-t border-gray-50">
-        <div className="flex items-center gap-2 min-w-0">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-50 text-brand-600 flex-shrink-0">
+      <div className="flex items-center justify-between gap-4 border-t border-surface-100 pt-3 dark:border-surface-200/60">
+        <div className="flex min-w-0 items-center gap-2">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-400">
             <FaUser className="h-3.5 w-3.5" />
           </div>
           <div className="min-w-0 truncate">
-            <p className="text-sm font-medium text-gray-700 truncate">
+            <p className="truncate text-sm font-medium text-surface-700 dark:text-surface-300">
               {req.resident?.name || "Resident"}
             </p>
             {req.resident?.email && (
-              <p className="text-xs text-gray-400 truncate">{req.resident.email}</p>
+              <p className="truncate text-xs text-surface-400 dark:text-surface-500">{req.resident.email}</p>
             )}
           </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <button
+        <div className="flex shrink-0 items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => onReject(req._id)}
             disabled={loading}
-            className={`rounded-xl px-4 py-2.5 text-sm font-semibold transition active:scale-95 ${
-              rejecting === req._id
-                ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                : "bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
-            }`}
+            loading={rejecting === req._id}
           >
-            {rejecting === req._id ? (
-              <span className="flex items-center gap-1.5"><Spinner /> Removing</span>
-            ) : (
-              <span className="flex items-center gap-1.5"><FaTimes className="h-3 w-3" /> Skip</span>
-            )}
-          </button>
-          <button
+            {rejecting === req._id ? "Removing" : <span className="flex items-center gap-1.5"><FaTimes className="h-3 w-3" /> Skip</span>}
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
             onClick={() => onAccept(req._id)}
             disabled={acceptDisabled}
-            className={`rounded-xl px-5 py-2.5 text-sm font-bold text-white shadow-sm transition active:scale-95 ${
-              acceptDisabled
-                ? "bg-gray-400 cursor-not-allowed"
-                : "bg-brand-600 hover:bg-brand-700 hover:shadow-md"
-            }`}
+            loading={accepting === req._id}
           >
-            {accepting === req._id ? (
-              <span className="flex items-center gap-1.5"><Spinner /> Accepting</span>
-            ) : hasActivePickup ? (
+            {accepting === req._id ? "Accepting" : hasActivePickup ? (
               <span className="flex items-center gap-1.5">Complete Current Pickup First</span>
             ) : (
               <span className="flex items-center gap-1.5">Accept <FaArrowRight className="h-3.5 w-3.5" /></span>
             )}
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -140,7 +124,6 @@ const RequestCard = ({ req, onAccept, onReject, accepting, rejecting, hasActiveP
 };
 
 const AvailableRequests = () => {
-  const navigate = useNavigate();
   const pollRef = useRef(null);
 
   const [loading, setLoading] = useState(true);
@@ -148,6 +131,8 @@ const AvailableRequests = () => {
   const [accepting, setAccepting] = useState(null);
   const [rejecting, setRejecting] = useState(null);
   const [hasActivePickup, setHasActivePickup] = useState(false);
+
+  const { user } = useAuth();
 
   const loadAvailable = async () => {
     try {
@@ -180,8 +165,8 @@ const AvailableRequests = () => {
               <FaRecycle className="h-5 w-5 text-brand-600" />
             </div>
             <div>
-              <p className="font-semibold text-gray-800">New Pickup Available</p>
-              <p className="text-sm text-gray-500">{request.pickupAddress}</p>
+              <p className="font-semibold text-surface-800 dark:text-surface-800">New Pickup Available</p>
+              <p className="text-sm text-surface-500 dark:text-surface-400">{request.pickupAddress}</p>
             </div>
           </div>,
           { autoClose: 8000 }
@@ -235,73 +220,69 @@ const AvailableRequests = () => {
     }
   };
 
-  if (loading) return <div className="animate-fade-in"><ListSkeleton count={4} /></div>;
-
   return (
-    <div className="mx-auto max-w-2xl animate-fade-in pb-8">
-      <button
-        onClick={() => navigate(ROUTES.COLLECTOR_DASHBOARD)}
-        className="mb-5 flex items-center gap-1.5 text-sm font-medium text-gray-500 transition hover:text-gray-800"
-      >
-        <FaArrowLeft className="h-3.5 w-3.5" />
-        Back to dashboard
-      </button>
-
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-800">Available Pickups</h2>
-          <p className="text-sm text-gray-400 mt-1">
-            {requests.length > 0
+    <CollectorLayout userName={user?.name}>
+      <div className="mx-auto max-w-2xl animate-fade-in pb-8">
+        <PageHeader
+          title="Available Pickups"
+          subtitle={
+            requests.length > 0
               ? `${requests.length} request${requests.length > 1 ? "s" : ""} waiting for a collector`
-              : "No available requests right now"}
-          </p>
-        </div>
-        <button
-          onClick={loadAvailable}
-          className="rounded-xl bg-gray-100 px-4 py-2.5 text-xs font-semibold text-gray-600 transition hover:bg-gray-200 active:scale-95"
-        >
-          Refresh
-        </button>
-      </div>
-
-      {hasActivePickup && (
-        <div className="mb-5 rounded-2xl bg-amber-50 border border-amber-200 px-5 py-4 flex items-start gap-3">
-          <FaInfoCircle className="h-5 w-5 text-amber-500 mt-0.5 flex-shrink-0" />
-          <p className="text-sm font-medium text-amber-800">
-            You already have an active pickup. Complete it before accepting another request.
-          </p>
-        </div>
-      )}
-
-      {requests.length === 0 ? (
-        <div className="rounded-2xl bg-white border border-gray-100 p-12 text-center shadow-sm">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-50">
-            <FaBroadcastTower className="h-7 w-7 text-gray-300" />
-          </div>
-          <p className="text-lg font-semibold text-gray-500">All caught up</p>
-          <p className="mt-1 text-sm text-gray-400">Waiting for residents to request pickups...</p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {requests.map((req, idx) => (
-            <div
-              key={req._id}
-              className="animate-fade-in"
-              style={{ animationDelay: `${idx * 60}ms` }}
+              : "No available requests right now"
+          }
+          icon={FaBroadcastTower}
+          actions={
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={loadAvailable}
+              disabled={loading}
+              icon={FaSyncAlt}
             >
-              <RequestCard
-                req={req}
-                onAccept={handleAccept}
-                onReject={handleReject}
-                accepting={accepting}
-                rejecting={rejecting}
-                hasActivePickup={hasActivePickup}
-              />
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+              {loading ? "Refreshing" : "Refresh"}
+            </Button>
+          }
+        />
+
+        {hasActivePickup && (
+          <div className="mb-5 flex items-start gap-3 rounded-2xl border border-warning-200 bg-warning-50 px-5 py-4 dark:border-warning-500/20 dark:bg-warning-500/10">
+            <FaInfoCircle className="mt-0.5 h-5 w-5 shrink-0 text-warning-500" />
+            <p className="text-sm font-medium text-warning-700 dark:text-warning-300">
+              You already have an active pickup. Complete it before accepting another request.
+            </p>
+          </div>
+        )}
+
+        {loading ? (
+          <ListSkeleton count={4} />
+        ) : requests.length === 0 ? (
+          <EmptyState
+            icon={FaBroadcastTower}
+            title="All caught up"
+            description="Waiting for residents to request pickups..."
+          />
+        ) : (
+          <div className="space-y-4">
+            {requests.map((req, idx) => (
+              <div
+                key={req._id}
+                className="animate-fade-in"
+                style={{ animationDelay: `${idx * 60}ms` }}
+              >
+                <RequestCard
+                  req={req}
+                  onAccept={handleAccept}
+                  onReject={handleReject}
+                  accepting={accepting}
+                  rejecting={rejecting}
+                  hasActivePickup={hasActivePickup}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </CollectorLayout>
   );
 };
 

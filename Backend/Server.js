@@ -23,6 +23,9 @@ import paymentRoutes from "./src/routes/paymentRoutes.js";
 import settingRoutes from "./src/routes/settingRoutes.js";
 import chatRoutes from "./src/routes/chatRoutes.js";
 import subscriptionRoutes from "./src/routes/subscriptionRoutes.js";
+import aiRoutes from "./src/routes/aiRoutes.js";
+import reviewRoutes from "./src/routes/reviewRoutes.js";
+import adminReviewRoutes from "./src/routes/adminReviewRoutes.js";
 import { startSubscriptionCron } from "./src/cron/subscriptionCron.js";
 
 connectDB().then(() => seedSettings());
@@ -58,6 +61,9 @@ app.use("/api/payments", paymentRoutes);
 app.use("/api/settings", settingRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/subscriptions", subscriptionRoutes);
+app.use("/api/ai", aiRoutes);
+app.use("/api/reviews", reviewRoutes);
+app.use("/api/admin/reviews", adminReviewRoutes);
 
 // 404 Handler
 app.use((req, res) => {

@@ -441,6 +441,19 @@ export const verifyOtpHandler = async (req, res) => {
     notifyPickupParticipants(request.resident, req.user.id, "pickup-completed", {
       request,
     });
+
+    notifyResidentById(request.resident, "leave-review", {
+      pickupId: request._id,
+      revieweeId: req.user.id,
+      message: "Your pickup is complete! Please rate your collector.",
+    });
+
+    notifyCollectorById(req.user.id, "leave-review", {
+      pickupId: request._id,
+      revieweeId: request.resident,
+      message: "Pickup completed! Please rate the resident.",
+    });
+
     notifyPickupParticipants(request.resident, req.user.id, "chat-closed", {
       pickupId: request._id,
     });

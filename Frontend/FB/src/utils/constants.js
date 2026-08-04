@@ -44,6 +44,10 @@ export const ROUTES = {
   ADMIN_PENDING_COLLECTORS:
     "/admin/pending-collectors",
   ADMIN_SETTINGS: "/admin/settings",
+  ADMIN_REVIEWS: "/admin/reviews",
+
+  // AI Assistant
+  AI_ASSISTANT: "/ai-assistant",
 };
 
 // API Endpoints
@@ -115,6 +119,19 @@ export const API_ENDPOINTS = {
   // Settings
   GET_SETTINGS: "/settings",
   UPDATE_SETTINGS: "/settings/bulk",
+
+  // AI Assistant
+  AI_CREATE_CONVERSATION: "/ai/conversation",
+  AI_CONVERSATIONS: "/ai/conversations",
+  AI_CONVERSATION: (id) => `/ai/conversation/${id}`,
+  AI_CHAT: "/ai/chat",
+  AI_STREAM_CHAT: "/ai/chat/stream",
+
+  // Reviews
+  CREATE_REVIEW: "/reviews",
+  GET_PICKUP_REVIEWS: (pickupId) => `/reviews/pickups/${pickupId}`,
+  GET_USER_REVIEWS: (userId) => `/reviews/users/${userId}`,
+  GET_USER_REVIEW_SUMMARY: (userId) => `/reviews/users/${userId}/summary`,
 };
 
 // Toast Messages

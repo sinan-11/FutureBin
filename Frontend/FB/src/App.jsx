@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import axios from "axios";
+import { useSelector } from "react-redux";
 
 import { API_BASE_URL, API_ENDPOINTS, ROUTES } from "./utils/constants";
 import axiosInstance from "./api/axiosInstance";
@@ -8,6 +9,10 @@ import store from "./store/store";
 import { setCredentials, setAccessToken, logout } from "./store/slices/authSlice";
 import { clearProfile } from "./store/slices/userSlice";
 import { clearAdmin } from "./store/slices/adminSlice";
+
+// AI Assistant
+import AiAssistant from "./pages/AiAssistant";
+import AiAssistantFab from "./components/AiAssistantFab";
 
 // Public Pages
 import Home from "./pages/Home";
@@ -38,6 +43,7 @@ import Residents from "./pages/admin/Residents";
 import ApprovedCollectors from "./pages/admin/ApprovedCollectors";
 import PendingCollectors from "./pages/admin/PendingCollectors";
 import AdminSettings from "./pages/admin/Settings";
+import AdminReviews from "./pages/admin/Reviews";
 
 // Route Guards
 import PublicRoute from "./components/PublicRoute";
@@ -46,10 +52,13 @@ import ResidentRoute from "./components/ResidentRoute";
 import CollectorRoute from "./components/CollectorRoute";
 import AdminRoute from "./components/AdminRoute";
 
+import { selectIsAuthenticated } from "./store/slices/authSlice";
+
 let authInitStarted = false;
 
 function App() {
   const [initializing, setInitializing] = useState(true);
+  const isAuthenticated = useSelector(selectIsAuthenticated);
 
   useEffect(() => {
     // StrictMode double-invokes effects in dev. The refresh token is single-use
@@ -92,8 +101,9 @@ function App() {
   }
 
   return (
-    <Routes>
-      <Route path={ROUTES.HOME} element={<Home />} />
+    <>
+      <Routes>
+        <Route path={ROUTES.HOME} element={<Home />} />
 
       <Route element={<PublicRoute />}>
         <Route path={ROUTES.LOGIN} element={<Login />} />
@@ -104,6 +114,8 @@ function App() {
       </Route>
 
       <Route element={<ProtectedRoute />}>
+        <Route path={ROUTES.AI_ASSISTANT} element={<AiAssistant />} />
+
         <Route element={<ResidentRoute />}>
           <Route path={ROUTES.RESIDENT_DASHBOARD} element={<ResidentDashboard />} />
           <Route path={ROUTES.RESIDENT_CREATE_REQUEST} element={<CreateRequest />} />
@@ -125,11 +137,15 @@ function App() {
           <Route path={ROUTES.ADMIN_APPROVED_COLLECTORS} element={<ApprovedCollectors />} />
           <Route path={ROUTES.ADMIN_PENDING_COLLECTORS} element={<PendingCollectors />} />
           <Route path={ROUTES.ADMIN_SETTINGS} element={<AdminSettings />} />
+          <Route path={ROUTES.ADMIN_REVIEWS} element={<AdminReviews />} />
         </Route>
       </Route>
 
       <Route path="*" element={<Navigate to={ROUTES.HOME} replace />} />
-    </Routes>
+      </Routes>
+
+      {isAuthenticated && <AiAssistantFab />}
+    </>
   );
 }
 

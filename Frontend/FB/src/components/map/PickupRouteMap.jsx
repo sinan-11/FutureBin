@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+﻿import { useEffect, useState, useCallback, useRef } from "react";
 import { MapContainer, TileLayer, Marker, Polyline, Circle, useMap } from "react-leaflet";
 import L from "leaflet";
 import {
@@ -276,8 +276,8 @@ const PickupRouteMap = ({ pickup, collectorLocation }) => {
 
   if (!hasPickup) {
     return (
-      <div className="rounded-xl border border-gray-100 bg-gray-50 p-4 text-center">
-        <p className="text-sm text-gray-400">Pickup location not available</p>
+      <div className="rounded-xl border border-surface-100 dark:border-surface-200/60 bg-surface-50 dark:bg-surface-200/40 p-4 text-center">
+        <p className="text-sm text-surface-400 dark:text-surface-500">Pickup location not available</p>
       </div>
     );
   }
@@ -300,7 +300,7 @@ const PickupRouteMap = ({ pickup, collectorLocation }) => {
   };
 
   return (
-    <div className="mt-3 overflow-hidden rounded-xl border border-gray-100">
+    <div className="mt-3 overflow-hidden rounded-xl border border-surface-100 dark:border-surface-200/60">
       {hasCollector && routeInfo && (
         <div className="flex items-center gap-3 bg-brand-50 px-4 py-2.5 border-b border-brand-100">
           <div className="flex items-center gap-1.5 text-sm font-semibold text-brand-700">
@@ -322,7 +322,7 @@ const PickupRouteMap = ({ pickup, collectorLocation }) => {
             {!navigating ? (
               <button
                 onClick={startNavigation}
-                className="flex items-center gap-1.5 rounded-full bg-brand-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-700 transition active:scale-[0.97]"
+                className="flex items-center gap-1.5 rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 transition active:scale-[0.97]"
               >
                 <FaMapMarkerAlt className="h-3 w-3" />
                 Navigate
@@ -341,18 +341,18 @@ const PickupRouteMap = ({ pickup, collectorLocation }) => {
       )}
 
       {navigating && routeInfo?.instructions?.[currentStep] && (
-        <div className="flex items-center gap-3 bg-white px-4 py-3 border-b border-gray-100">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-600 text-white">
+        <div className="flex items-center gap-3 bg-white dark:bg-surface-100 px-4 py-3 border-b border-surface-100 dark:border-surface-200/60">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white">
             {getDirectionIcon(routeInfo.instructions[currentStep].modifier)}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-gray-900 truncate">
+            <p className="text-sm font-bold text-surface-900 dark:text-surface-900 truncate">
               {rerouting
                 ? "Recalculating..."
                 : routeInfo.instructions[currentStep].text || "Continue"}
             </p>
             {!rerouting && routeInfo.instructions[currentStep].distance > 0 && (
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-surface-500 dark:text-surface-400">
                 for {formatStepDist(routeInfo.instructions[currentStep].distance)}
               </p>
             )}
@@ -361,7 +361,7 @@ const PickupRouteMap = ({ pickup, collectorLocation }) => {
             <p className="text-lg font-bold text-brand-700">
               {formatDuration(routeInfo.duration)}
             </p>
-            <p className="text-[10px] text-gray-400">remaining</p>
+            <p className="text-[10px] text-surface-400 dark:text-surface-500">remaining</p>
           </div>
         </div>
       )}
@@ -415,7 +415,7 @@ const PickupRouteMap = ({ pickup, collectorLocation }) => {
       </MapContainer>
 
       {hasCollector && showDirections && routeInfo?.instructions?.length > 0 && (
-        <div className="max-h-52 overflow-y-auto border-t border-gray-100 bg-white">
+        <div className="max-h-52 overflow-y-auto border-t border-surface-100 dark:border-surface-200/60 bg-white dark:bg-surface-100">
           <div className="p-3">
             {routeInfo.instructions.map((inst, i) => {
               const isFirst = i === 0;
@@ -427,30 +427,30 @@ const PickupRouteMap = ({ pickup, collectorLocation }) => {
                   <div className="flex flex-col items-center">
                     <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold transition-colors ${
                       isCurrent
-                        ? "bg-brand-600 text-white ring-2 ring-brand-300"
+                        ? "bg-emerald-600 text-white ring-2 ring-emerald-300"
                         : isPast
-                          ? "bg-gray-200 text-gray-400"
+                          ? "bg-surface-200 dark:bg-surface-200 text-surface-400 dark:text-surface-500"
                           : isFirst
                             ? "bg-blue-500 text-white"
                             : isLast
                               ? "bg-green-500 text-white"
-                              : "bg-gray-400 text-white"
+                              : "bg-surface-400 dark:bg-surface-500 text-white"
                     }`}>
                       {isFirst ? <FaPlay className="h-2 w-2" /> : isLast ? <FaFlagCheckered className="h-2 w-2" /> : i}
                     </div>
                     {i < routeInfo.instructions.length - 1 && (
-                      <div className={`w-px h-3 my-0.5 ${isPast ? "bg-gray-200" : "bg-gray-200"}`} />
+                      <div className={`w-px h-3 my-0.5 ${isPast ? "bg-surface-200 dark:bg-surface-200" : "bg-surface-200 dark:bg-surface-200"}`} />
                     )}
                   </div>
                   <div className={`flex-1 min-w-0 pb-2 ${isPast ? "opacity-40" : ""}`}>
-                    <div className={`flex items-center gap-1.5 text-sm ${isCurrent ? "font-bold text-brand-700" : "text-gray-800"}`}>
+                    <div className={`flex items-center gap-1.5 text-sm ${isCurrent ? "font-bold text-brand-700" : "text-surface-800 dark:text-surface-800"}`}>
                       {!isFirst && !isLast && inst.modifier && getDirectionIcon(inst.modifier)}
                       <span className={isFirst || isLast ? "font-medium" : ""}>
                         {isFirst ? "Head to pickup location" : isLast ? "Arrive at destination" : (inst.text || "Continue")}
                       </span>
                     </div>
                     {inst.distance > 0 && (
-                      <p className="text-xs text-gray-400 mt-0.5">{formatStepDist(inst.distance)}</p>
+                      <p className="text-xs text-surface-400 dark:text-surface-500 mt-0.5">{formatStepDist(inst.distance)}</p>
                     )}
                   </div>
                 </div>

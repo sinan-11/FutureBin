@@ -115,6 +115,25 @@ const userSchema = new mongoose.Schema(
       select: false,
     },
 
+    // Rating
+    averageRating: {
+      type: Number,
+      default: 0,
+    },
+
+    totalReviews: {
+      type: Number,
+      default: 0,
+    },
+
+    ratingBreakdown: {
+      5: { type: Number, default: 0 },
+      4: { type: Number, default: 0 },
+      3: { type: Number, default: 0 },
+      2: { type: Number, default: 0 },
+      1: { type: Number, default: 0 },
+    },
+
     // Collector Location
     location: {
       type: {

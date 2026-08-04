@@ -3,33 +3,36 @@ import { useNavigate, Link } from "react-router-dom";
 import {
   FaRecycle, FaPlus, FaTrashAlt, FaTruck, FaWeight,
   FaMoneyBillWave, FaMapMarkerAlt, FaCheckCircle,
-  FaTimesCircle, FaHourglass, FaHome, FaWallet, FaKey, FaMap, FaComments, FaLeaf, FaSignOutAlt, FaCalendarAlt,
+  FaTimesCircle, FaHourglass, FaWallet, FaKey, FaMap, FaComments, FaCalendarAlt,
 } from "react-icons/fa";
 import { toast } from "react-toastify";
 
 import useAuth from "../../hooks/useAuth";
 import useSocket from "../../hooks/useSocket";
 import { getMyPickupsService, cancelPickupService, getPickupOtpService, confirmExtraPaymentService, payExtraWalletService } from "../../services/pickupService";
-import { logoutService } from "../../services/authService";
+import { getPickupReviewsService, createReviewService } from "../../services/reviewService";
 import { ROUTES } from "../../utils/constants";
 import { getErrorMessage, formatDateTime, capitalize, formatCurrency } from "../../utils/helpers";
 import { isValidCoordinates } from "../../utils/map";
 import { playNotificationSound } from "../../utils/sound";
+import ResidentLayout from "../../layouts/ResidentLayout";
 import WalletPanel from "../../components/WalletPanel";
 import LiveCollectorTracker from "../../components/map/LiveCollectorTracker";
 import ChatPanel from "../../components/ChatPanel";
+import ReviewButton from "../../components/ReviewButton";
+import ReviewModal from "../../components/ReviewModal";
 
 const STATUS_BADGES = {
-  broadcasting: { label: "Finding Collector", color: "bg-blue-100 text-blue-700", icon: FaHourglass },
+  broadcasting: { label: "Finding Collector", color: "bg-info-100 text-info-700", icon: FaHourglass },
   accepted: { label: "Collector on the way", color: "bg-indigo-100 text-indigo-700", icon: FaTruck },
   collector_arrived: { label: "Collector arrived", color: "bg-purple-100 text-purple-700", icon: FaMapMarkerAlt },
-  collecting: { label: "Collecting waste", color: "bg-amber-100 text-amber-700", icon: FaTrashAlt },
-  weight_verified: { label: "Weight verified", color: "bg-orange-100 text-orange-700", icon: FaWeight },
+  collecting: { label: "Collecting waste", color: "bg-warning-100 text-warning-700", icon: FaTrashAlt },
+  weight_verified: { label: "Weight verified", color: "bg-warning-100 text-warning-700", icon: FaWeight },
   payment_pending: { label: "Payment pending", color: "bg-yellow-100 text-yellow-700", icon: FaMoneyBillWave },
   paid: { label: "Paid", color: "bg-teal-100 text-teal-700", icon: FaCheckCircle },
-  completed: { label: "Completed", color: "bg-green-100 text-green-700", icon: FaCheckCircle },
-  cancelled: { label: "Cancelled", color: "bg-red-100 text-red-700", icon: FaTimesCircle },
-  expired: { label: "Expired", color: "bg-gray-100 text-gray-600", icon: FaTimesCircle },
+  completed: { label: "Completed", color: "bg-success-100 text-success-700", icon: FaCheckCircle },
+  cancelled: { label: "Cancelled", color: "bg-red-100 text-danger-700", icon: FaTimesCircle },
+  expired: { label: "Expired", color: "bg-surface-100 dark:bg-surface-200 text-surface-600 dark:text-surface-500", icon: FaTimesCircle },
 };
 
 const STATUS_STEPS = [
@@ -120,28 +123,28 @@ const ExtraPaymentModal = ({ request, onClose, onSuccess }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
       <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl animate-fade-in text-center">
-        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-orange-50">
-          <FaMoneyBillWave className="h-6 w-6 text-orange-600" />
+        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-warning-50">
+          <FaMoneyBillWave className="h-6 w-6 text-warning-600" />
         </div>
-        <h3 className="text-lg font-bold text-gray-800 mb-2">Extra Payment Required</h3>
-        <p className="text-sm text-gray-500 mb-4">
+        <h3 className="text-lg font-bold text-surface-800 dark:text-surface-800 mb-2">Extra Payment Required</h3>
+        <p className="text-sm text-surface-500 dark:text-surface-400 mb-4">
           The actual weight ({request.actualWeight}kg) exceeds the estimated weight. You need to pay an additional amount.
         </p>
-        <div className="rounded-xl bg-gray-50 p-4 mb-4">
-          <p className="text-xs text-gray-400">Additional amount</p>
-          <p className="text-2xl font-bold text-gray-800">{formatCurrency(request.extraPaymentAmount)}</p>
+        <div className="rounded-xl bg-surface-50 dark:bg-surface-200/40 p-4 mb-4">
+          <p className="text-xs text-surface-400 dark:text-surface-500">Additional amount</p>
+          <p className="text-2xl font-bold text-surface-800 dark:text-surface-800">{formatCurrency(request.extraPaymentAmount)}</p>
         </div>
         <div className="flex gap-3">
           <button
             onClick={onClose}
-            className="flex-1 rounded-xl border border-gray-200 py-3 text-sm font-semibold text-gray-500 hover:bg-gray-50"
+            className="flex-1 rounded-xl border border-surface-200 py-3 text-sm font-semibold text-surface-500 dark:text-surface-400 hover:bg-surface-50 dark:hover:bg-surface-200/40"
           >
             Cancel
           </button>
           <button
             onClick={handlePayFromWallet}
             disabled={paying}
-            className="flex-1 rounded-xl bg-green-600 py-3 text-sm font-bold text-white hover:bg-green-700 disabled:opacity-50"
+            className="flex-1 rounded-xl bg-success-600 py-3 text-sm font-bold text-white hover:bg-success-700 disabled:opacity-50"
           >
             {paying && method === "wallet" ? "Paying..." : "Pay from Wallet"}
           </button>
@@ -149,7 +152,7 @@ const ExtraPaymentModal = ({ request, onClose, onSuccess }) => {
             <button
               onClick={handlePayFromRazorpay}
               disabled={paying}
-              className="flex-1 rounded-xl bg-brand-600 py-3 text-sm font-bold text-white hover:bg-brand-700 disabled:opacity-50"
+              className="flex-1 rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
             >
               {paying && method === "razorpay" ? "Paying..." : "Pay Online"}
             </button>
@@ -186,23 +189,23 @@ const CancelConfirmationModal = ({ request, onClose, onConfirm }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
       <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl animate-fade-in text-center">
-        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-red-50">
-          <FaTimesCircle className="h-6 w-6 text-red-600" />
+        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-danger-50 dark:bg-danger-500/10">
+          <FaTimesCircle className="h-6 w-6 text-danger-600" />
         </div>
-        <h3 className="text-lg font-bold text-gray-800 mb-2">Cancel Pickup?</h3>
+        <h3 className="text-lg font-bold text-surface-800 dark:text-surface-800 mb-2">Cancel Pickup?</h3>
         {feeApplies ? (
           <>
-            <p className="text-sm text-gray-500 mb-3">
+            <p className="text-sm text-surface-500 dark:text-surface-400 mb-3">
               A collector has already been assigned to this pickup. Cancelling now will incur a cancellation fee.
             </p>
-            <div className="rounded-xl bg-red-50 border border-red-100 p-4 mb-4">
-              <p className="text-xs text-red-400">Cancellation fee</p>
-              <p className="text-2xl font-bold text-red-600">{formatCurrency(cancellationFee)}</p>
-              <p className="text-xs text-red-300 mt-1">This will be deducted from your wallet</p>
+            <div className="rounded-xl bg-danger-50 dark:bg-danger-500/10 border border-red-100 p-4 mb-4">
+              <p className="text-xs text-danger-400">Cancellation fee</p>
+              <p className="text-2xl font-bold text-danger-600">{formatCurrency(cancellationFee)}</p>
+              <p className="text-xs text-danger-300 mt-1">This will be deducted from your wallet</p>
             </div>
           </>
         ) : (
-          <p className="text-sm text-gray-500 mb-4">
+          <p className="text-sm text-surface-500 dark:text-surface-400 mb-4">
             {isBeforeAcceptance
               ? "Are you sure you want to cancel this pickup request? Your reserved amount will be released."
               : "Are you sure you want to cancel this pickup request?"}
@@ -212,7 +215,7 @@ const CancelConfirmationModal = ({ request, onClose, onConfirm }) => {
           <button
             onClick={onClose}
             disabled={cancelling}
-            className="flex-1 rounded-xl border border-gray-200 py-3 text-sm font-semibold text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+            className="flex-1 rounded-xl border border-surface-200 py-3 text-sm font-semibold text-surface-500 dark:text-surface-400 hover:bg-surface-50 dark:hover:bg-surface-200/40 disabled:opacity-50"
           >
             Keep Request
           </button>
@@ -256,7 +259,7 @@ const OTPModal = ({ requestId, onClose }) => {
         <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-brand-50">
           <FaKey className="h-6 w-6 text-brand-600" />
         </div>
-        <h3 className="text-lg font-bold text-gray-800 mb-2">OTP Verification</h3>
+        <h3 className="text-lg font-bold text-surface-800 dark:text-surface-800 mb-2">OTP Verification</h3>
         {loading ? (
           <div className="flex justify-center py-4">
             <svg className="h-6 w-6 animate-spin text-brand-600" viewBox="0 0 24 24">
@@ -266,17 +269,17 @@ const OTPModal = ({ requestId, onClose }) => {
           </div>
         ) : otpData?.otp ? (
           <>
-            <p className="text-sm text-gray-400 mb-3">Share this OTP with your collector to complete the pickup.</p>
-            <div className="mx-auto mb-4 inline-block rounded-xl bg-gray-50 px-6 py-3">
-              <span className="text-3xl font-bold tracking-[0.3em] text-gray-800">{otpData.otp}</span>
+            <p className="text-sm text-surface-400 dark:text-surface-500 mb-3">Share this OTP with your collector to complete the pickup.</p>
+            <div className="mx-auto mb-4 inline-block rounded-xl bg-surface-50 dark:bg-surface-200/40 px-6 py-3">
+              <span className="text-3xl font-bold tracking-[0.3em] text-surface-800 dark:text-surface-800">{otpData.otp}</span>
             </div>
           </>
         ) : (
-          <p className="text-sm text-gray-500 py-4">Could not retrieve OTP. Please ask your collector to generate a new one.</p>
+          <p className="text-sm text-surface-500 dark:text-surface-400 py-4">Could not retrieve OTP. Please ask your collector to generate a new one.</p>
         )}
         <button
           onClick={onClose}
-          className="mt-2 w-full rounded-xl bg-gray-100 py-3 text-sm font-semibold text-gray-600 transition hover:bg-gray-200"
+          className="mt-2 w-full rounded-xl bg-surface-100 dark:bg-surface-200 py-3 text-sm font-semibold text-surface-600 dark:text-surface-500 transition hover:bg-surface-200 dark:hover:bg-surface-200"
         >
           Close
         </button>
@@ -308,11 +311,30 @@ const Dashboard = () => {
   const [showTracker, setShowTracker] = useState(false);
   const [routeData, setRouteData] = useState(null);
   const [chatOpen, setChatOpen] = useState(false);
+  const [reviewedPickups, setReviewedPickups] = useState({});
+  const [reviewModal, setReviewModal] = useState(null);
+  const [reviewLoading, setReviewLoading] = useState(false);
 
   const loadRequests = useCallback(async () => {
     try {
       const data = await getMyPickupsService();
       setRequests(data);
+
+      const completed = data?.completed || [];
+      if (completed.length > 0) {
+        const reviewStatus = {};
+        await Promise.allSettled(
+          completed.map(async (pickup) => {
+            try {
+              const reviews = await getPickupReviewsService(pickup._id);
+              reviewStatus[pickup._id] = !!reviews.residentReview;
+            } catch {
+              reviewStatus[pickup._id] = false;
+            }
+          })
+        );
+        setReviewedPickups(reviewStatus);
+      }
     } catch { /* silent */ }
   }, []);
 
@@ -360,8 +382,8 @@ const Dashboard = () => {
                 <FaTruck className="h-5 w-5 text-brand-600" />
               </div>
               <div>
-                <p className="font-semibold text-gray-800">Collector is almost here!</p>
-                <p className="text-sm text-gray-500">ETA: {result.duration} min</p>
+                <p className="font-semibold text-surface-800 dark:text-surface-800">Collector is almost here!</p>
+                <p className="text-sm text-surface-500 dark:text-surface-400">ETA: {result.duration} min</p>
               </div>
             </div>,
             { autoClose: 8000 }
@@ -507,8 +529,8 @@ const Dashboard = () => {
               <FaComments className="h-5 w-5 text-emerald-600" />
             </div>
             <div className="min-w-0">
-              <p className="font-semibold text-gray-800">{senderName}</p>
-              <p className="truncate text-sm text-gray-500">{msg.message}</p>
+              <p className="font-semibold text-surface-800 dark:text-surface-800">{senderName}</p>
+              <p className="truncate text-sm text-surface-500 dark:text-surface-400">{msg.message}</p>
             </div>
           </div>,
           { autoClose: 6000, onClick: () => {
@@ -592,97 +614,84 @@ const Dashboard = () => {
     }
   };
 
-  const handleLogout = async () => {
-    await logoutService();
-    toast.success("Logged out");
-    navigate(ROUTES.HOME, { replace: true });
+  const handleOpenReview = (request) => {
+    setReviewModal(request);
+  };
+
+  const handleSubmitReview = async ({ rating, comment, tags }) => {
+    if (!reviewModal) return;
+    setReviewLoading(true);
+    try {
+      await createReviewService({
+        pickup: reviewModal._id,
+        rating,
+        comment,
+        tags,
+      });
+      toast.success("Review submitted successfully!");
+      setReviewedPickups((prev) => ({ ...prev, [reviewModal._id]: true }));
+      setReviewModal(null);
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setReviewLoading(false);
+    }
   };
 
   const activeRequest = requests.current[0];
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* ─── Top Bar ─── */}
-      <header className="bg-brand-700/95 shadow-lg shadow-brand-900/20 backdrop-blur-xl border-b border-white/10">
-        <div className="mx-auto flex max-w-2xl items-center justify-between px-4 py-3 md:px-8 md:py-4">
-          <Link to={ROUTES.HOME} className="flex items-center gap-2 group">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/15 transition group-hover:bg-white/25 group-hover:scale-105">
-              <FaLeaf className="h-4 w-4 text-white" />
+    <ResidentLayout userName={user?.name}>
+      <div className="space-y-6">
+        {/* ─── Quick actions ─── */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <button
+            onClick={() => navigate(ROUTES.RESIDENT_CREATE_REQUEST)}
+            className="card card-hover group flex items-center gap-4 p-4 text-left"
+          >
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 transition group-hover:scale-105 dark:bg-emerald-500/10 dark:text-emerald-400">
+              <FaPlus className="h-5 w-5" />
             </div>
-            <span className="text-xl font-extrabold tracking-tight text-white md:text-2xl">
-              Future<span className="text-brand-200">Bin</span>
-            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-bold text-surface-800 dark:text-surface-800">Request pickup</p>
+              <p className="text-xs text-surface-400 dark:text-surface-500">Schedule waste collection</p>
+            </div>
+          </button>
+
+          <Link
+            to={ROUTES.RESIDENT_MY_SUBSCRIPTIONS}
+            className="card card-hover group flex items-center gap-4 p-4 text-left"
+          >
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-violet-50 text-violet-600 transition group-hover:scale-105 dark:bg-violet-500/10 dark:text-violet-400">
+              <FaCalendarAlt className="h-5 w-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-bold text-surface-800 dark:text-surface-800">Subscriptions</p>
+              <p className="text-xs text-surface-400 dark:text-surface-500">Automate recurring pickups</p>
+            </div>
           </Link>
-          <div className="flex items-center gap-1 sm:gap-1.5">
-            <Link
-              to={ROUTES.HOME}
-              className="hidden sm:flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium text-white/80 transition hover:bg-white/10 hover:text-white"
-            >
-              <FaHome className="h-3.5 w-3.5" />
-              Home
-            </Link>
-            <button
-              onClick={() => navigate(ROUTES.RESIDENT_MY_REQUESTS)}
-              className="flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium text-white/80 transition hover:bg-white/10 hover:text-white"
-            >
-              Requests
-            </button>
-            <button
-              onClick={() => setShowWallet(true)}
-              className="flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium text-white/80 transition hover:bg-white/10 hover:text-white"
-            >
-              <FaWallet className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Wallet</span>
-            </button>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-1.5 rounded-full p-2 text-white/50 transition hover:bg-red-500/20 hover:text-red-300"
-              title="Logout"
-            >
-              <FaSignOutAlt size={14} />
-            </button>
-          </div>
-        </div>
-      </header>
 
-      <main className="mx-auto max-w-2xl px-4 py-6 space-y-6">
-        {/* ─── Uber-style "Where to?" bar ─── */}
-        <div
-          onClick={() => navigate(ROUTES.RESIDENT_CREATE_REQUEST)}
-          className="rounded-2xl bg-white border border-gray-200 p-4 shadow-sm cursor-pointer hover:shadow-md transition flex items-center gap-4"
-        >
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-50">
-            <FaPlus className="text-brand-600" />
-          </div>
-          <div className="flex-1">
-            <p className="font-bold text-gray-800">Request a pickup</p>
-            <p className="text-sm text-gray-400">Schedule waste collection from your location</p>
-          </div>
-          <FaTrashAlt className="text-gray-300" />
+          <button
+            onClick={() => setShowWallet(true)}
+            className="card card-hover group flex items-center gap-4 p-4 text-left"
+          >
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-warning-50 text-amber-600 transition group-hover:scale-105 dark:bg-warning-500/10 dark:text-amber-400">
+              <FaWallet className="h-5 w-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-bold text-surface-800 dark:text-surface-800">Wallet</p>
+              <p className="text-xs text-surface-400 dark:text-surface-500">Balance & payments</p>
+            </div>
+          </button>
         </div>
-
-        {/* ─── Subscriptions link ─── */}
-        <Link
-          to={ROUTES.RESIDENT_MY_SUBSCRIPTIONS}
-          className="rounded-2xl bg-white border border-gray-200 p-4 shadow-sm hover:shadow-md transition flex items-center gap-4"
-        >
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-purple-50">
-            <FaCalendarAlt className="text-purple-600" />
-          </div>
-          <div className="flex-1">
-            <p className="font-bold text-gray-800">Subscriptions</p>
-            <p className="text-sm text-gray-400">Automate recurring waste pickups</p>
-          </div>
-          <FaCalendarAlt className="text-gray-300" />
-        </Link>
 
         {/* ─── Active request (Uber ride tracking style) ─── */}
         {activeRequest ? (
           <section>
-            <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">Current Pickup</h2>
-              <div className="rounded-2xl bg-white border border-gray-200 overflow-hidden shadow-sm">
+            <h2 className="text-sm font-bold text-surface-500 dark:text-surface-400 uppercase tracking-wider mb-3">Current Pickup</h2>
+              <div className="rounded-2xl bg-white border border-surface-200 overflow-hidden shadow-sm dark:bg-emerald-500 dark:border-emerald-400">
               {/* Status header */}
-              <div className="bg-brand-600 text-white">
+              <div className="bg-emerald-600 text-white">
                 <div className="px-4 py-3">
                   <div className="flex items-center gap-2">
                     {(() => {
@@ -703,35 +712,35 @@ const Dashboard = () => {
                 <div className="flex items-start gap-3">
                   <FaMapMarkerAlt className="mt-0.5 text-brand-500 flex-shrink-0" />
                   <div>
-                    <p className="text-xs text-gray-400">Pickup address</p>
-                    <p className="font-medium text-gray-800 text-sm">{activeRequest.pickupAddress}</p>
+                    <p className="text-xs text-surface-400 dark:text-white/70">Pickup address</p>
+                    <p className="font-medium text-surface-800 dark:text-white text-sm">{activeRequest.pickupAddress}</p>
                   </div>
                 </div>
 
                 <div className="flex items-start gap-3">
-                  <FaRecycle className="mt-0.5 text-gray-400 flex-shrink-0" />
-                  <div>
-                    <p className="text-xs text-gray-400">Waste type</p>
-                    <p className="font-medium text-gray-800 text-sm capitalize">{activeRequest.wasteType}</p>
+                  <FaRecycle className="mt-0.5 text-surface-400 dark:text-white/70 flex-shrink-0" />
+                    <div>
+                      <p className="text-xs text-surface-400 dark:text-white/70">Waste type</p>
+                      <p className="font-medium text-surface-800 dark:text-white text-sm capitalize">{activeRequest.wasteType}</p>
                   </div>
                 </div>
 
                 {activeRequest.collector && (
                   <div className="flex items-start gap-3">
-                    <FaTruck className="mt-0.5 text-gray-400 flex-shrink-0" />
+                    <FaTruck className="mt-0.5 text-surface-400 dark:text-white/70 flex-shrink-0" />
                     <div>
-                      <p className="text-xs text-gray-400">Collector</p>
-                      <p className="font-medium text-gray-800 text-sm">
+                      <p className="text-xs text-surface-400 dark:text-white/70">Collector</p>
+                      <p className="font-medium text-surface-800 dark:text-white text-sm">
                         {activeRequest.collector.name}
                         {activeRequest.collector.collectorDetails?.phone && (
-                          <span className="text-gray-400 ml-2">· {activeRequest.collector.collectorDetails.phone}</span>
+                          <span className="text-surface-400 dark:text-white/70 ml-2">· {activeRequest.collector.collectorDetails.phone}</span>
                         )}
                       </p>
                     </div>
                   </div>
                 )}
 
-                <div className="flex gap-4 text-xs text-gray-500 pt-2 border-t border-gray-100">
+                <div className="flex gap-4 text-xs text-surface-500 dark:text-white/80 pt-2 border-t border-surface-100 dark:border-white/20">
                   <span className="flex items-center gap-1"><FaWeight />{activeRequest.actualWeight || activeRequest.estimatedWeight} kg</span>
                   <span className="flex items-center gap-1"><FaMoneyBillWave />₹{activeRequest.finalPrice || activeRequest.estimatedPrice}</span>
                 </div>
@@ -739,7 +748,7 @@ const Dashboard = () => {
                 {activeRequest.status === "weight_verified" && activeRequest.paymentStatus !== "awaiting_extra_payment" && (activeRequest.paymentMethod === "wallet" || activeRequest.cashConfirmed) && (
                   <button
                     onClick={() => setOtpModal(activeRequest._id)}
-                    className="w-full rounded-xl bg-amber-50 border-2 border-amber-200 py-2.5 text-sm font-bold text-amber-700 hover:bg-amber-100 transition"
+                    className="w-full rounded-xl bg-warning-50 border-2 border-amber-200 py-2.5 text-sm font-bold text-warning-700 hover:bg-warning-100 transition"
                   >
                     <span className="flex items-center justify-center gap-2"><FaKey className="h-4 w-4" /> View OTP</span>
                   </button>
@@ -747,7 +756,7 @@ const Dashboard = () => {
                 {activeRequest.paymentStatus === "awaiting_extra_payment" && (
                   <button
                     onClick={() => setExtraPaymentModal(activeRequest)}
-                    className="w-full rounded-xl bg-orange-50 border-2 border-orange-200 py-2.5 text-sm font-bold text-orange-700 hover:bg-orange-100 transition"
+                    className="w-full rounded-xl bg-warning-50 border-2 border-orange-200 py-2.5 text-sm font-bold text-warning-700 hover:bg-warning-100 transition"
                   >
                     <span className="flex items-center justify-center gap-2"><FaMoneyBillWave className="h-4 w-4" /> Pay Extra {formatCurrency(activeRequest.extraPaymentAmount)}</span>
                   </button>
@@ -755,7 +764,7 @@ const Dashboard = () => {
                 {(activeRequest.status === "broadcasting" || activeRequest.status === "accepted") && (
                   <button
                     onClick={() => setCancelModal(activeRequest)}
-                    className="w-full rounded-xl border-2 border-red-200 py-2.5 text-sm font-bold text-red-600 hover:bg-red-50 transition"
+                    className="w-full rounded-xl border-2 border-red-200 py-2.5 text-sm font-bold text-danger-600 hover:bg-danger-50 dark:hover:bg-danger-500/10 transition"
                   >
                     Cancel Request
                   </button>
@@ -794,7 +803,7 @@ const Dashboard = () => {
                       <FaComments className="h-4 w-4" />
                       {chatOpen ? "Close Chat" : "Chat with Collector"}
                       {!chatOpen && activeRequest.unreadCount > 0 && (
-                        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[11px] font-bold text-white">
+                        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-danger-50 dark:bg-danger-500/100 px-1.5 text-[11px] font-bold text-white">
                           {activeRequest.unreadCount}
                         </span>
                       )}
@@ -823,13 +832,13 @@ const Dashboard = () => {
         ) : (
           /* ─── No active request ─── */
           <section>
-            <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">Current Pickup</h2>
-            <div className="rounded-2xl bg-white border border-gray-200 p-8 text-center shadow-sm">
-              <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-gray-50">
-                <FaRecycle className="h-6 w-6 text-gray-300" />
+            <h2 className="text-sm font-bold text-surface-500 dark:text-surface-400 uppercase tracking-wider mb-3">Current Pickup</h2>
+            <div className="rounded-2xl bg-white border border-surface-200 p-8 text-center shadow-sm dark:bg-emerald-500 dark:border-emerald-400">
+              <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-surface-50 dark:bg-white/15">
+                <FaRecycle className="h-6 w-6 text-surface-400 dark:text-white" />
               </div>
-              <p className="font-semibold text-gray-500">No active pickup</p>
-              <p className="text-sm text-gray-400 mt-1">Tap "Request a pickup" above to schedule a waste collection.</p>
+              <p className="font-semibold text-surface-500 dark:text-white">No active pickup</p>
+              <p className="text-sm text-surface-400 dark:text-white/70 mt-1">Tap "Request a pickup" above to schedule a waste collection.</p>
             </div>
           </section>
         )}
@@ -837,26 +846,33 @@ const Dashboard = () => {
         {/* ─── Recent requests ─── */}
         {requests.completed.length > 0 && (
           <section>
-            <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">Recent Pickups</h2>
+            <h2 className="text-sm font-bold text-surface-500 dark:text-surface-400 uppercase tracking-wider mb-3">Recent Pickups</h2>
             <div className="space-y-2">
               {requests.completed.slice(0, 3).map((req) => (
-                <div key={req._id} className="rounded-xl bg-white border border-gray-100 p-3 shadow-sm">
+                <div key={req._id} className="rounded-xl bg-white border border-surface-100 dark:border-surface-200/60 p-3 shadow-sm dark:bg-emerald-500 dark:border-emerald-400">
                   <div className="flex items-center justify-between">
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-gray-700 text-sm truncate">{req.pickupAddress}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        <FaCheckCircle className="inline mr-1 text-green-500" />
+                      <p className="font-medium text-surface-700 dark:text-white text-sm truncate">{req.pickupAddress}</p>
+                      <p className="text-xs text-surface-400 dark:text-white/70 mt-0.5">
+                        <FaCheckCircle className="inline mr-1 text-success-500" />
                         Completed · {formatDateTime(req.completedAt)}
                       </p>
                     </div>
-                    <span className="text-xs font-medium text-gray-400 ml-3">₹{req.estimatedPrice}</span>
+                    <div className="flex items-center gap-2 ml-3">
+                      <span className="text-xs font-medium text-surface-400 dark:text-white/70">₹{req.estimatedPrice}</span>
+                      <ReviewButton
+                        hasReviewed={!!reviewedPickups[req._id]}
+                        onClick={() => handleOpenReview(req)}
+                        loading={reviewLoading}
+                      />
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
           </section>
         )}
-      </main>
+      </div>
 
       {otpModal && <OTPModal requestId={otpModal} onClose={() => setOtpModal(null)} />}
       {cancelModal && (
@@ -877,7 +893,20 @@ const Dashboard = () => {
         />
       )}
       {showWallet && <WalletPanel onClose={() => setShowWallet(false)} role="resident" />}
-    </div>
+
+      {reviewModal && (
+        <ReviewModal
+          isOpen={!!reviewModal}
+          onClose={() => setReviewModal(null)}
+          revieweeName={reviewModal.collector?.name || "Collector"}
+          reviewerRole="resident"
+          pickupAddress={reviewModal.pickupAddress}
+          wasteType={reviewModal.wasteType}
+          onSubmit={handleSubmitReview}
+          loading={reviewLoading}
+        />
+      )}
+    </ResidentLayout>
   );
 };
 

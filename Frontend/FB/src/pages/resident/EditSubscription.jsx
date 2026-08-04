@@ -1,14 +1,16 @@
 import { useState, useEffect } from "react";
-import { useNavigate, Link, useParams, useLocation } from "react-router-dom";
-import { FaLeaf, FaSignOutAlt, FaArrowLeft, FaCalendarAlt, FaSpinner } from "react-icons/fa";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { FaCalendarAlt } from "react-icons/fa";
 import { toast } from "react-toastify";
 
 import useAuth from "../../hooks/useAuth";
 import { editSubscriptionService } from "../../services/subscriptionService";
-import { logoutService } from "../../services/authService";
 import { ROUTES } from "../../utils/constants";
 import { getErrorMessage } from "../../utils/helpers";
 import LocationPickerMap from "../../components/map/LocationPickerMap";
+import ResidentLayout from "../../layouts/ResidentLayout";
+import Button from "../../components/Button";
+import PageHeader from "../../components/PageHeader";
 
 const WASTE_TYPES = ["recyclable", "organic", "hazardous", "electronic", "general"];
 const DAYS_OF_WEEK = [
@@ -23,8 +25,8 @@ const DAYS_OF_WEEK = [
 
 const inputClass = (error) =>
   `w-full rounded-xl border ${
-    error ? "border-red-400 bg-red-50" : "border-gray-200 bg-white"
-  } px-4 py-3 text-sm outline-none transition-all duration-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-100`;
+    error ? "border-danger-400 bg-danger-50/40 dark:bg-danger-500/10" : "border-surface-200 bg-surface dark:bg-surface-100 dark:border-surface-200"
+  } px-4 py-3 text-sm text-surface-800 outline-none transition-all duration-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:focus:ring-brand-500/15`;
 
 const EditSubscription = () => {
   const { id } = useParams();
@@ -141,65 +143,40 @@ const EditSubscription = () => {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
-        <div className="h-10 w-10 animate-spin rounded-full border-4 border-brand-400 border-t-transparent" />
-      </div>
+      <ResidentLayout userName={user?.name}>
+        <div className="flex min-h-[50vh] items-center justify-center">
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-brand-400 border-t-transparent" />
+        </div>
+      </ResidentLayout>
     );
   }
 
   if (!existing) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
-        <p className="text-gray-500">Subscription not found. Go back and try again.</p>
-      </div>
+      <ResidentLayout userName={user?.name}>
+        <div className="card flex min-h-[50vh] flex-col items-center justify-center gap-3 text-center">
+          <p className="text-surface-500 dark:text-surface-400">Subscription not found. Go back and try again.</p>
+          <Button variant="secondary" onClick={() => navigate(ROUTES.RESIDENT_MY_SUBSCRIPTIONS)}>
+            Back to Subscriptions
+          </Button>
+        </div>
+      </ResidentLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-brand-700/95 shadow-lg shadow-brand-900/20 backdrop-blur-xl border-b border-white/10">
-        <div className="mx-auto flex max-w-2xl items-center justify-between px-4 py-3 md:px-8 md:py-4">
-          <Link to={ROUTES.HOME} className="flex items-center gap-2 group">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/15 transition group-hover:bg-white/25 group-hover:scale-105">
-              <FaLeaf className="h-4 w-4 text-white" />
-            </div>
-            <span className="text-xl font-extrabold tracking-tight text-white md:text-2xl">
-              Future<span className="text-brand-200">Bin</span>
-            </span>
-          </Link>
-          <div className="flex items-center gap-1 sm:gap-1.5">
-            <Link
-              to={ROUTES.RESIDENT_MY_SUBSCRIPTIONS}
-              className="flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium text-white/80 transition hover:bg-white/10 hover:text-white"
-            >
-              <FaArrowLeft className="h-3.5 w-3.5" /> Back
-            </Link>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-1.5 rounded-full p-2 text-white/50 transition hover:bg-red-500/20 hover:text-red-300"
-              title="Logout"
-            >
-              <FaSignOutAlt size={14} />
-            </button>
-          </div>
-        </div>
-      </header>
+    <ResidentLayout userName={user?.name}>
+      <div className="mx-auto max-w-2xl animate-fade-in">
+        <PageHeader
+          title="Edit Subscription"
+          subtitle={`${existing.frequency} subscription`}
+          icon={FaCalendarAlt}
+        />
 
-      <main className="mx-auto max-w-2xl px-4 py-6">
-        <div className="mb-6 flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-50">
-            <FaCalendarAlt className="h-6 w-6 text-brand-600" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-800">Edit Subscription</h1>
-            <p className="text-sm text-gray-400 capitalize">{existing.frequency} subscription</p>
-          </div>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="card space-y-5 p-6">
           {/* Frequency */}
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700">Frequency</label>
+            <label className="mb-1.5 block text-sm font-medium text-surface-700 dark:text-surface-300">Frequency</label>
             <div className="grid grid-cols-2 gap-3">
               {["weekly", "monthly"].map((freq) => (
                 <button
@@ -208,8 +185,8 @@ const EditSubscription = () => {
                   onClick={() => handleChange("frequency", freq)}
                   className={`rounded-xl border-2 p-3 text-sm font-semibold capitalize transition ${
                     form.frequency === freq
-                      ? "border-brand-500 bg-brand-50 text-brand-700"
-                      : "border-gray-200 text-gray-500 hover:border-gray-300"
+                      ? "border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"
+                      : "border-surface-200 text-surface-500 hover:border-surface-300 dark:border-surface-200 dark:text-surface-400"
                   }`}
                 >
                   {freq}
@@ -220,7 +197,7 @@ const EditSubscription = () => {
 
           {form.frequency === "weekly" && (
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700">Day of Week</label>
+              <label className="mb-1.5 block text-sm font-medium text-surface-700 dark:text-surface-300">Day of Week</label>
               <select
                 value={form.dayOfWeek}
                 onChange={(e) => handleChange("dayOfWeek", e.target.value)}
@@ -235,7 +212,7 @@ const EditSubscription = () => {
 
           {form.frequency === "monthly" && (
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700">Day of Month</label>
+              <label className="mb-1.5 block text-sm font-medium text-surface-700 dark:text-surface-300">Day of Month</label>
               <input
                 type="number"
                 min="1"
@@ -245,12 +222,12 @@ const EditSubscription = () => {
                 placeholder="1-31"
                 className={inputClass(errors.dayOfMonth)}
               />
-              {errors.dayOfMonth && <p className="mt-1 text-xs text-red-500">{errors.dayOfMonth}</p>}
+              {errors.dayOfMonth && <p className="mt-1 text-xs text-danger-500">{errors.dayOfMonth}</p>}
             </div>
           )}
 
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700">Pickup Time</label>
+            <label className="mb-1.5 block text-sm font-medium text-surface-700 dark:text-surface-300">Pickup Time</label>
             <input
               type="time"
               value={form.pickupTime}
@@ -260,8 +237,8 @@ const EditSubscription = () => {
           </div>
 
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700">Waste Type</label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            <label className="mb-1.5 block text-sm font-medium text-surface-700 dark:text-surface-300">Waste Type</label>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {WASTE_TYPES.map((type) => (
                 <button
                   key={type}
@@ -269,8 +246,8 @@ const EditSubscription = () => {
                   onClick={() => handleChange("wasteType", type)}
                   className={`rounded-xl border-2 p-2.5 text-xs font-semibold capitalize transition ${
                     form.wasteType === type
-                      ? "border-brand-500 bg-brand-50 text-brand-700"
-                      : "border-gray-200 text-gray-500 hover:border-gray-300"
+                      ? "border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"
+                      : "border-surface-200 text-surface-500 hover:border-surface-300 dark:border-surface-200 dark:text-surface-400"
                   }`}
                 >
                   {type}
@@ -280,7 +257,7 @@ const EditSubscription = () => {
           </div>
 
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700">Estimated Weight (kg)</label>
+            <label className="mb-1.5 block text-sm font-medium text-surface-700 dark:text-surface-300">Estimated Weight (kg)</label>
             <input
               type="number"
               min="0.1"
@@ -290,11 +267,11 @@ const EditSubscription = () => {
               placeholder="e.g. 5"
               className={inputClass(errors.estimatedWeight)}
             />
-            {errors.estimatedWeight && <p className="mt-1 text-xs text-red-500">{errors.estimatedWeight}</p>}
+            {errors.estimatedWeight && <p className="mt-1 text-xs text-danger-500">{errors.estimatedWeight}</p>}
           </div>
 
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700">Pickup Address</label>
+            <label className="mb-1.5 block text-sm font-medium text-surface-700 dark:text-surface-300">Pickup Address</label>
             <input
               type="text"
               value={form.addressFull}
@@ -302,18 +279,18 @@ const EditSubscription = () => {
               placeholder="Full address"
               className={inputClass(errors.addressFull)}
             />
-            {errors.addressFull && <p className="mt-1 text-xs text-red-500">{errors.addressFull}</p>}
+            {errors.addressFull && <p className="mt-1 text-xs text-danger-500">{errors.addressFull}</p>}
           </div>
 
           <div className="relative z-0">
-            <label className="mb-1.5 block text-sm font-medium text-gray-700">Pickup Location</label>
-            <p className="mb-1.5 text-xs text-gray-400">Tap the map or drag the marker</p>
+            <label className="mb-1.5 block text-sm font-medium text-surface-700 dark:text-surface-300">Pickup Location</label>
+            <p className="mb-1.5 text-xs text-surface-400 dark:text-surface-500">Tap the map or drag the marker</p>
             <LocationPickerMap onChange={handleLocationChange} />
-            {errors.coordinates && <p className="mt-1 text-xs text-red-500">{errors.coordinates}</p>}
+            {errors.coordinates && <p className="mt-1 text-xs text-danger-500">{errors.coordinates}</p>}
           </div>
 
           <div className="relative z-10">
-            <label className="mb-1.5 block text-sm font-medium text-gray-700">Payment Method</label>
+            <label className="mb-1.5 block text-sm font-medium text-surface-700 dark:text-surface-300">Payment Method</label>
             <div className="grid grid-cols-2 gap-3">
               {["wallet", "cash"].map((method) => (
                 <button
@@ -322,8 +299,8 @@ const EditSubscription = () => {
                   onClick={() => handleChange("paymentMethod", method)}
                   className={`rounded-xl border-2 p-3 text-sm font-semibold capitalize transition ${
                     form.paymentMethod === method
-                      ? "border-brand-500 bg-brand-50 text-brand-700"
-                      : "border-gray-200 text-gray-500 hover:border-gray-300"
+                      ? "border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"
+                      : "border-surface-200 text-surface-500 hover:border-surface-300 dark:border-surface-200 dark:text-surface-400"
                   }`}
                 >
                   {method}
@@ -332,22 +309,19 @@ const EditSubscription = () => {
             </div>
           </div>
 
-          <button
+          <Button
             type="submit"
-            disabled={submitting}
-            className="relative z-10 w-full rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 py-3.5 text-sm font-bold text-white shadow-sm shadow-brand-200 hover:from-brand-700 hover:to-brand-600 active:scale-[0.97] transition disabled:opacity-50"
+            variant="primary"
+            loading={submitting}
+            fullWidth
+            size="xl"
+            className="relative z-10"
           >
-            {submitting ? (
-              <span className="flex items-center justify-center gap-2">
-                <FaSpinner className="animate-spin" /> Saving...
-              </span>
-            ) : (
-              "Save Changes"
-            )}
-          </button>
+            {submitting ? "Saving..." : "Save Changes"}
+          </Button>
         </form>
-      </main>
-    </div>
+      </div>
+    </ResidentLayout>
   );
 };
 

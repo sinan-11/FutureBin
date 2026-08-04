@@ -4,6 +4,7 @@ import {
   FaPaperPlane,
   FaCheck,
   FaCheckDouble,
+  FaComments,
 } from "react-icons/fa";
 import useAuth from "../hooks/useAuth";
 import Loader from "./Loader";
@@ -256,20 +257,20 @@ const ChatPanel = ({ pickup, socketRef, onClose }) => {
         style={{ animation: "chatBackdropIn 200ms ease-out" }}
       >
         <div
-          className="flex w-full max-w-[400px] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl mx-4"
+          className="flex w-full max-w-[400px] flex-col overflow-hidden rounded-2xl bg-white dark:bg-surface-100 shadow-popover dark:bg-surface-100 mx-4"
           style={{
             maxHeight: "min(620px, 82vh)",
             animation: "chatPanelIn 250ms cubic-bezier(0.16, 1, 0.3, 1)",
           }}
         >
-          {/* ─── Header ─── */}
-          <div className="flex items-center justify-between border-b border-gray-100 bg-white px-4 py-3 shrink-0">
+          {/* ───────── Header ───────── */}
+          <div className="flex items-center justify-between border-b border-surface-100 dark:border-surface-200/60 bg-white dark:bg-surface-100 px-4 py-3 shrink-0">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500 text-white text-sm font-bold shrink-0 select-none">
                 {otherParty?.name?.charAt(0)?.toUpperCase() || "U"}
               </div>
               <div className="min-w-0">
-                <h3 className="text-sm font-semibold text-gray-900 truncate">
+                <h3 className="text-sm font-semibold text-surface-900 dark:text-surface-900 truncate">
                   {otherParty?.name || "User"}
                 </h3>
                 {hasSentMessages ? (
@@ -279,13 +280,13 @@ const ChatPanel = ({ pickup, socketRef, onClose }) => {
                       Seen
                     </p>
                   ) : (
-                    <p className="flex items-center gap-1 text-xs text-gray-400">
+                    <p className="flex items-center gap-1 text-xs text-surface-400 dark:text-surface-500">
                       <FaCheck className="h-3 w-3" />
                       Sent
                     </p>
                   )
                 ) : (
-                  <p className="text-xs text-green-600">
+                  <p className="text-xs text-success-600">
                     {isChatActive ? "Online" : "Offline"}
                   </p>
                 )}
@@ -293,17 +294,17 @@ const ChatPanel = ({ pickup, socketRef, onClose }) => {
             </div>
             <button
               onClick={onClose}
-              className="flex h-8 w-8 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors duration-200 shrink-0"
+              className="flex h-8 w-8 items-center justify-center rounded-full text-surface-400 dark:text-surface-500 hover:bg-surface-100 dark:bg-surface-200 hover:text-surface-600 dark:text-surface-500 transition-colors duration-200 shrink-0"
               aria-label="Close chat"
             >
               <FaTimes className="h-4 w-4" />
             </button>
           </div>
 
-          {/* ─── Messages ─── */}
+          {/* ───────── Messages ───────── */}
           <div
             ref={messagesContainerRef}
-            className="flex-1 overflow-y-auto px-4 py-3 min-h-0 bg-gray-50"
+            className="flex-1 overflow-y-auto px-4 py-3 min-h-0 bg-surface-50 dark:bg-surface-200/30"
           >
             {loading ? (
               <div className="flex items-center justify-center py-16">
@@ -311,7 +312,7 @@ const ChatPanel = ({ pickup, socketRef, onClose }) => {
               </div>
             ) : error ? (
               <div className="flex flex-col items-center justify-center py-16 gap-3">
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-surface-500 dark:text-surface-400">
                   Unable to load messages
                 </p>
                 <button
@@ -323,8 +324,10 @@ const ChatPanel = ({ pickup, socketRef, onClose }) => {
               </div>
             ) : messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20">
-                <span className="text-4xl mb-3 select-none">💬</span>
-                <p className="text-sm font-medium text-gray-500">
+                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-surface-100 text-surface-400 dark:bg-surface-200 dark:text-surface-500">
+                  <FaComments className="h-6 w-6" />
+                </div>
+                <p className="text-sm font-medium text-surface-500 dark:text-surface-400">
                   Start the conversation
                 </p>
               </div>
@@ -339,11 +342,11 @@ const ChatPanel = ({ pickup, socketRef, onClose }) => {
                     <div key={msg._id}>
                       {showDate && (
                         <div className="flex items-center justify-center py-2 gap-3">
-                          <div className="h-px flex-1 bg-gray-200" />
-                          <span className="shrink-0 rounded-full bg-white px-3 py-1 text-[11px] font-medium text-gray-500 shadow-sm border border-gray-100 select-none">
+                          <div className="h-px flex-1 bg-surface-200 dark:bg-surface-200/70" />
+                          <span className="shrink-0 rounded-full bg-white dark:bg-surface-100 px-3 py-1 text-[11px] font-medium text-surface-500 dark:text-surface-400 shadow-sm border border-surface-100 dark:border-surface-200/60 select-none">
                             {formatDateSeparator(msg.createdAt)}
                           </span>
-                          <div className="h-px flex-1 bg-gray-200" />
+                          <div className="h-px flex-1 bg-surface-200 dark:bg-surface-200/70" />
                         </div>
                       )}
                       <div
@@ -353,7 +356,7 @@ const ChatPanel = ({ pickup, socketRef, onClose }) => {
                           className={`relative max-w-[70%] px-3.5 py-2 ${
                             isSent
                               ? "bg-emerald-500 text-white rounded-2xl rounded-br-md"
-                              : "bg-white text-gray-800 rounded-2xl rounded-bl-md shadow-sm"
+                              : "bg-white dark:bg-surface-100 text-surface-800 dark:text-surface-800 rounded-2xl rounded-bl-md shadow-sm"
                           }`}
                         >
                           <p className="text-[14px] leading-relaxed whitespace-pre-wrap break-words">
@@ -362,7 +365,7 @@ const ChatPanel = ({ pickup, socketRef, onClose }) => {
                           <div className="flex items-center justify-end gap-1 mt-0.5">
                             <span
                               className={`text-[11px] select-none ${
-                                isSent ? "text-white/70" : "text-gray-400"
+                                isSent ? "text-white/70" : "text-surface-400 dark:text-surface-500"
                               }`}
                             >
                               {formatTime(msg.createdAt)}
@@ -385,9 +388,9 @@ const ChatPanel = ({ pickup, socketRef, onClose }) => {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* ─── Input ─── */}
+          {/* ───────── Input ───────── */}
           {isChatActive && (
-            <div className="flex items-center gap-2 border-t border-gray-100 bg-white px-3 py-3 shrink-0">
+            <div className="flex items-center gap-2 border-t border-surface-100 dark:border-surface-200/60 bg-white dark:bg-surface-100 px-3 py-3 shrink-0">
               <input
                 ref={inputRef}
                 type="text"
@@ -395,14 +398,14 @@ const ChatPanel = ({ pickup, socketRef, onClose }) => {
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Type a message..."
-                className="flex-1 rounded-full bg-gray-50 border border-gray-200 px-5 py-3 text-sm text-gray-800 outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all duration-200 placeholder:text-gray-400"
+                className="flex-1 rounded-full bg-surface-50 dark:bg-surface-200/30 border border-surface-200 px-5 py-3 text-sm text-surface-800 dark:text-surface-800 outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all duration-200 placeholder:text-surface-400 dark:text-surface-500"
                 disabled={sending}
                 autoFocus
               />
               <button
                 onClick={handleSend}
                 disabled={!input.trim() || sending}
-                className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white transition-all duration-200 hover:bg-emerald-600 active:scale-95 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed shadow-sm"
+                className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white transition-all duration-200 hover:bg-emerald-600 active:scale-95 disabled:bg-surface-200 dark:bg-surface-200/70 disabled:text-surface-400 dark:text-surface-500 disabled:cursor-not-allowed shadow-sm"
                 aria-label="Send message"
               >
                 <FaPaperPlane className="h-4 w-4" />

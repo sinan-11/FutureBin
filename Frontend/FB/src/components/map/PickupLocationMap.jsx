@@ -1,4 +1,4 @@
-import { MapContainer, TileLayer, Marker } from "react-leaflet";
+﻿import { MapContainer, TileLayer, Marker } from "react-leaflet";
 import { FaDirections } from "react-icons/fa";
 
 import { generateGoogleMapsLink, isValidCoordinates } from "../../utils/map";
@@ -16,8 +16,8 @@ const PickupLocationMap = ({ pickup }) => {
 
   if (!isValidCoordinates(coords)) {
     return (
-      <div className="rounded-xl border border-gray-100 bg-gray-50 p-4 text-center">
-        <p className="text-sm text-gray-400">Location not available</p>
+      <div className="rounded-xl border border-surface-100 dark:border-surface-200/60 bg-surface-50 dark:bg-surface-200/40 p-4 text-center">
+        <p className="text-sm text-surface-400 dark:text-surface-500">Location not available</p>
       </div>
     );
   }
@@ -27,7 +27,7 @@ const PickupLocationMap = ({ pickup }) => {
   const mapsLink = generateGoogleMapsLink(lat, lng);
 
   return (
-    <div className="mt-3 overflow-hidden rounded-xl border border-gray-100">
+    <div className="mt-3 overflow-hidden rounded-xl border border-surface-100 dark:border-surface-200/60">
       <MapContainer
         center={position}
         zoom={16}
@@ -49,7 +49,7 @@ const PickupLocationMap = ({ pickup }) => {
         href={mapsLink}
         target="_blank"
         rel="noopener noreferrer"
-        className="flex items-center justify-center gap-2 w-full bg-brand-600 py-2.5 text-sm font-bold text-white transition hover:bg-brand-700 active:scale-[0.98]"
+        className="flex items-center justify-center gap-2 w-full bg-emerald-600 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-700 active:scale-[0.98]"
       >
         <FaDirections className="h-3.5 w-3.5" />
         Navigate

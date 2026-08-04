@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+﻿import { useEffect } from "react";
 import { MapContainer, TileLayer, Marker, Polyline, useMap } from "react-leaflet";
 import L from "leaflet";
 import { FaRoute, FaClock, FaSpinner } from "react-icons/fa";
@@ -65,8 +65,8 @@ const LiveCollectorTracker = ({ pickup, collectorLocation, routeData }) => {
 
   if (!hasPickup) {
     return (
-      <div className="rounded-xl border border-gray-100 bg-gray-50 p-4 text-center">
-        <p className="text-sm text-gray-400">Pickup location not available</p>
+      <div className="rounded-xl border border-surface-100 dark:border-surface-200/60 bg-surface-50 dark:bg-surface-200/40 p-4 text-center">
+        <p className="text-sm text-surface-400 dark:text-surface-500">Pickup location not available</p>
       </div>
     );
   }
@@ -97,7 +97,7 @@ const LiveCollectorTracker = ({ pickup, collectorLocation, routeData }) => {
   };
 
   return (
-    <div className="overflow-hidden rounded-xl border border-gray-100">
+    <div className="overflow-hidden rounded-xl border border-surface-100 dark:border-surface-200/60">
       {hasCollector && routeData && (
         <div className="flex items-center gap-3 bg-brand-50 px-4 py-2.5 border-b border-brand-100">
           <div className="flex items-center gap-1.5 text-sm font-semibold text-brand-700">

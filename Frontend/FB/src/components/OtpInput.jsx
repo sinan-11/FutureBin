@@ -61,7 +61,7 @@ const OtpInput = ({ length = 6, value, onChange, disabled }) => {
           onKeyDown={(e) => handleKeyDown(i, e)}
           onPaste={i === 0 ? handlePaste : undefined}
           disabled={disabled}
-          className="h-14 w-12 rounded-xl border-2 border-gray-200 text-center text-2xl font-bold text-gray-800 outline-none transition-all focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:opacity-50"
+          className="h-14 w-12 rounded-xl border-2 border-surface-200 bg-surface text-center text-2xl font-bold text-surface-800 outline-none transition-all focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15 disabled:opacity-50 dark:border-surface-200 dark:bg-surface-100 dark:text-surface-800"
         />
       ))}
     </div>

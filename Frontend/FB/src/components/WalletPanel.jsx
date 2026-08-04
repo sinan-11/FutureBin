@@ -15,42 +15,42 @@ import { updateBankDetailsService } from "../services/userService";
 import { formatDateTime, formatCurrency } from "../utils/helpers";
 
 const TRANSACTION_TYPES = {
-  TOPUP: { label: "Top-up", color: "text-green-600", icon: FaArrowDown, bg: "bg-green-100" },
-  RESERVE: { label: "Reserved", color: "text-orange-500", icon: FaArrowUp, bg: "bg-orange-100" },
-  EXTRA_RESERVE: { label: "Extra Reserved", color: "text-orange-500", icon: FaArrowUp, bg: "bg-orange-100" },
-  RELEASE: { label: "Released", color: "text-blue-500", icon: FaArrowDown, bg: "bg-blue-100" },
-  PICKUP_PAYMENT: { label: "Pickup Payment", color: "text-green-600", icon: FaArrowDown, bg: "bg-green-100" },
-  CANCELLATION_FEE: { label: "Cancellation Fee", color: "text-red-500", icon: FaArrowUp, bg: "bg-red-100" },
+  TOPUP: { label: "Top-up", color: "text-success-600 dark:text-success-400", icon: FaArrowDown, bg: "bg-success-50 dark:bg-success-500/10" },
+  RESERVE: { label: "Reserved", color: "text-warning-500", icon: FaArrowUp, bg: "bg-warning-50 dark:bg-warning-500/10" },
+  EXTRA_RESERVE: { label: "Extra Reserved", color: "text-warning-500", icon: FaArrowUp, bg: "bg-warning-50 dark:bg-warning-500/10" },
+  RELEASE: { label: "Released", color: "text-info-500", icon: FaArrowDown, bg: "bg-info-50 dark:bg-info-500/10" },
+  PICKUP_PAYMENT: { label: "Pickup Payment", color: "text-success-600 dark:text-success-400", icon: FaArrowDown, bg: "bg-success-50 dark:bg-success-500/10" },
+  CANCELLATION_FEE: { label: "Cancellation Fee", color: "text-danger-500", icon: FaArrowUp, bg: "bg-danger-50 dark:bg-danger-500/10" },
   TRANSFER: { label: "Transfer", color: "text-purple-500", icon: FaArrowUp, bg: "bg-purple-100" },
-  WITHDRAWAL: { label: "Withdrawal", color: "text-red-500", icon: FaArrowUp, bg: "bg-red-100" },
-  REFUND: { label: "Refund", color: "text-green-500", icon: FaArrowDown, bg: "bg-green-100" },
+  WITHDRAWAL: { label: "Withdrawal", color: "text-danger-500", icon: FaArrowUp, bg: "bg-danger-50 dark:bg-danger-500/10" },
+  REFUND: { label: "Refund", color: "text-success-500", icon: FaArrowDown, bg: "bg-success-50 dark:bg-success-500/10" },
 };
 
 const STATUS_STYLES = {
-  processing: { label: "Processing", color: "bg-orange-100 text-orange-700", dot: "bg-orange-500" },
-  completed: { label: "Completed", color: "bg-green-100 text-green-700", dot: "bg-green-500" },
-  failed: { label: "Failed", color: "bg-red-100 text-red-700", dot: "bg-red-500" },
+  processing: { label: "Processing", color: "bg-warning-50 dark:bg-warning-500/10 text-warning-700", dot: "bg-warning-500" },
+  completed: { label: "Completed", color: "bg-success-50 dark:bg-success-500/10 text-success-700", dot: "bg-success-500" },
+  failed: { label: "Failed", color: "bg-danger-50 dark:bg-danger-500/10 text-danger-700", dot: "bg-danger-50 dark:bg-danger-500/100" },
 };
 
 const BankDetailsForm = ({ bankDetails, setBankDetails, savingBank, handleSaveBank }) => (
-  <div className="rounded-lg border border-gray-200 bg-white p-3 space-y-2">
+  <div className="rounded-lg border border-surface-200 bg-white dark:bg-surface-100 p-3 space-y-2">
     <div className="flex items-center gap-2 mb-1">
-      <FaUniversity className="h-3.5 w-3.5 text-gray-400" />
-      <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Bank Details</span>
+      <FaUniversity className="h-3.5 w-3.5 text-surface-400 dark:text-surface-500" />
+      <span className="text-xs font-semibold text-surface-500 dark:text-surface-400 uppercase tracking-wider">Bank Details</span>
     </div>
     <input
       type="text"
       placeholder="Account Holder Name"
       value={bankDetails.accountHolderName}
       onChange={(e) => setBankDetails({ ...bankDetails, accountHolderName: e.target.value })}
-      className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none"
+      className="w-full rounded-lg border border-surface-200 bg-surface-50 dark:bg-surface-200/40 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
     />
     <input
       type="text"
       placeholder="Account Number"
       value={bankDetails.accountNumber}
       onChange={(e) => setBankDetails({ ...bankDetails, accountNumber: e.target.value })}
-      className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none"
+      className="w-full rounded-lg border border-surface-200 bg-surface-50 dark:bg-surface-200/40 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
     />
     <div className="grid grid-cols-2 gap-2">
       <input
@@ -58,20 +58,20 @@ const BankDetailsForm = ({ bankDetails, setBankDetails, savingBank, handleSaveBa
         placeholder="IFSC Code"
         value={bankDetails.ifscCode}
         onChange={(e) => setBankDetails({ ...bankDetails, ifscCode: e.target.value.toUpperCase() })}
-        className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none"
+        className="rounded-lg border border-surface-200 bg-surface-50 dark:bg-surface-200/40 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
       />
       <input
         type="text"
         placeholder="Bank Name"
         value={bankDetails.bankName}
         onChange={(e) => setBankDetails({ ...bankDetails, bankName: e.target.value })}
-        className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none"
+        className="rounded-lg border border-surface-200 bg-surface-50 dark:bg-surface-200/40 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
       />
     </div>
     <button
       onClick={handleSaveBank}
       disabled={savingBank}
-      className="w-full rounded-lg border border-gray-200 bg-gray-100 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-200 disabled:opacity-50"
+      className="w-full rounded-lg border border-surface-200 bg-surface-100 dark:bg-surface-200 py-2 text-xs font-semibold text-surface-600 dark:text-surface-500 hover:bg-surface-200 dark:hover:bg-surface-200 disabled:opacity-50"
     >
       {savingBank ? "Saving..." : "Save Bank Details"}
     </button>
@@ -143,17 +143,17 @@ const WithdrawForm = ({ wallet, onDone }) => {
 
   return (
     <div className="space-y-3">
-      <h4 className="text-sm font-bold text-gray-800">Withdraw to Bank Account</h4>
+      <h4 className="text-sm font-bold text-surface-800 dark:text-surface-800">Withdraw to Bank Account</h4>
       <BankDetailsForm
         bankDetails={bankDetails}
         setBankDetails={setBankDetails}
         savingBank={savingBank}
         handleSaveBank={handleSaveBank}
       />
-      <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 space-y-2">
+      <div className="rounded-lg border border-info-200 bg-info-50 p-3 space-y-2">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold text-blue-700">Withdrawal Amount</span>
-          <span className="text-xs text-blue-500">Available: {formatCurrency(available, wallet.currency)}</span>
+          <span className="text-xs font-semibold text-info-700">Withdrawal Amount</span>
+          <span className="text-xs text-info-500">Available: {formatCurrency(available, wallet.currency)}</span>
         </div>
         <input
           type="number"
@@ -162,14 +162,14 @@ const WithdrawForm = ({ wallet, onDone }) => {
           placeholder="Enter amount"
           value={withdrawAmount}
           onChange={(e) => setWithdrawAmount(e.target.value)}
-          className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2.5 text-sm font-semibold focus:border-blue-500 focus:outline-none"
+          className="w-full rounded-lg border border-info-200 bg-white dark:bg-surface-100 px-3 py-2.5 text-sm font-semibold focus:border-blue-500 focus:outline-none"
         />
         <div className="flex gap-2">
           {[100, 500, 1000, 2000].filter((amt) => amt <= available).map((amt) => (
             <button
               key={amt}
               onClick={() => setWithdrawAmount(String(amt))}
-              className="flex-1 rounded-lg border border-blue-200 bg-white py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100"
+              className="flex-1 rounded-lg border border-info-200 bg-white dark:bg-surface-100 py-1.5 text-xs font-medium text-info-700 hover:bg-info-50 dark:bg-info-500/10"
             >
               ₹{amt}
             </button>
@@ -178,7 +178,7 @@ const WithdrawForm = ({ wallet, onDone }) => {
         <button
           onClick={handleWithdraw}
           disabled={withdrawing || !withdrawAmount}
-          className="w-full rounded-lg bg-blue-600 py-2.5 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
+          className="w-full rounded-lg bg-info-600 py-2.5 text-sm font-bold text-white hover:bg-info-700 disabled:opacity-50 flex items-center justify-center gap-2"
         >
           {withdrawing ? <><FaSpinner className="animate-spin" /> Processing...</> : "Withdraw to Bank"}
         </button>
@@ -188,22 +188,22 @@ const WithdrawForm = ({ wallet, onDone }) => {
 };
 
 const WithdrawalHistory = ({ withdrawals, loading }) => (
-  <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-3">
-    <h4 className="text-sm font-bold text-gray-700">Withdrawal History</h4>
+  <div className="rounded-xl border border-surface-200 bg-surface-50 dark:bg-surface-200/40 p-4 space-y-3">
+    <h4 className="text-sm font-bold text-surface-700 dark:text-surface-300">Withdrawal History</h4>
     {loading ? (
-      <div className="flex justify-center py-4"><FaSpinner className="animate-spin text-gray-400" /></div>
+      <div className="flex justify-center py-4"><FaSpinner className="animate-spin text-surface-400 dark:text-surface-500" /></div>
     ) : withdrawals.length === 0 ? (
-      <p className="text-center text-sm text-gray-400 py-4">No withdrawals yet</p>
+      <p className="text-center text-sm text-surface-400 dark:text-surface-500 py-4">No withdrawals yet</p>
     ) : (
       <div className="space-y-2 max-h-60 overflow-y-auto">
         {withdrawals.map((wd) => {
           const st = STATUS_STYLES[wd.status] || STATUS_STYLES.processing;
           return (
-            <div key={wd._id} className="rounded-lg bg-white p-3 border border-gray-100">
+            <div key={wd._id} className="rounded-lg bg-white dark:bg-surface-100 p-3 border border-surface-100 dark:border-surface-200/60">
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-2">
-                  <FaUniversity className="h-3.5 w-3.5 text-gray-400" />
-                  <span className="text-xs font-medium text-gray-700">
+                  <FaUniversity className="h-3.5 w-3.5 text-surface-400 dark:text-surface-500" />
+                  <span className="text-xs font-medium text-surface-700 dark:text-surface-300">
                     {wd.bankDetails.bankName || "Bank"} ••{wd.bankDetails.accountNumber.slice(-4)}
                   </span>
                 </div>
@@ -213,19 +213,19 @@ const WithdrawalHistory = ({ withdrawals, loading }) => (
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <p className="text-sm font-bold text-red-500">-{formatCurrency(wd.amount, "INR")}</p>
-                <span className="text-[10px] text-gray-400">{formatDateTime(wd.createdAt)}</span>
+                <p className="text-sm font-bold text-danger-500">-{formatCurrency(wd.amount, "INR")}</p>
+                <span className="text-[10px] text-surface-400 dark:text-surface-500">{formatDateTime(wd.createdAt)}</span>
               </div>
-              <div className="mt-1 flex items-center justify-between text-[10px] text-gray-400">
+              <div className="mt-1 flex items-center justify-between text-[10px] text-surface-400 dark:text-surface-500">
                 <span>Ref: {wd.transaction?.reference || "N/A"}</span>
                 {wd.status === "processing" && (
-                  <span className="flex items-center gap-1 text-orange-500">
+                  <span className="flex items-center gap-1 text-warning-500">
                     <FaClock className="h-2.5 w-2.5" />
                     Expected: Within 24 hours
                   </span>
                 )}
                 {wd.status === "failed" && wd.failureReason && (
-                  <span className="flex items-center gap-1 text-red-500">
+                  <span className="flex items-center gap-1 text-danger-500">
                     <FaExclamationTriangle className="h-2.5 w-2.5" />
                     {wd.failureReason}
                   </span>
@@ -240,42 +240,42 @@ const WithdrawalHistory = ({ withdrawals, loading }) => (
 );
 
 const TransactionHistory = ({ transactions, wallet, loading }) => (
-  <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-3">
-    <h4 className="text-sm font-bold text-gray-700">Transactions</h4>
+  <div className="rounded-xl border border-surface-200 bg-surface-50 dark:bg-surface-200/40 p-4 space-y-3">
+    <h4 className="text-sm font-bold text-surface-700 dark:text-surface-300">Transactions</h4>
     {loading ? (
-      <div className="flex justify-center py-4"><FaSpinner className="animate-spin text-gray-400" /></div>
+      <div className="flex justify-center py-4"><FaSpinner className="animate-spin text-surface-400 dark:text-surface-500" /></div>
     ) : transactions.length === 0 ? (
-      <p className="text-center text-sm text-gray-400 py-4">No transactions yet</p>
+      <p className="text-center text-sm text-surface-400 dark:text-surface-500 py-4">No transactions yet</p>
     ) : (
       <div className="space-y-2 max-h-60 overflow-y-auto">
         {transactions.map((tx) => {
-          const typeInfo = TRANSACTION_TYPES[tx.type] || { label: tx.type, color: "text-gray-500", icon: FaArrowUp, bg: "bg-gray-100" };
+          const typeInfo = TRANSACTION_TYPES[tx.type] || { label: tx.type, color: "text-surface-500 dark:text-surface-400", icon: FaArrowUp, bg: "bg-surface-100 dark:bg-surface-200" };
           const txStatus = STATUS_STYLES[tx.status] || null;
           const Icon = typeInfo.icon;
           const isCredit = tx.to && tx.to._id === wallet.user;
           return (
-            <div key={tx._id} className="flex items-center gap-3 rounded-lg bg-white p-3 border border-gray-100">
+            <div key={tx._id} className="flex items-center gap-3 rounded-lg bg-white dark:bg-surface-100 p-3 border border-surface-100 dark:border-surface-200/60">
               <div className={`flex h-8 w-8 items-center justify-center rounded-full ${typeInfo.bg}`}>
                 <Icon className={`h-3.5 w-3.5 ${typeInfo.color}`} />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <p className="text-xs font-medium text-gray-700 truncate">{typeInfo.label}</p>
+                  <p className="text-xs font-medium text-surface-700 dark:text-surface-300 truncate">{typeInfo.label}</p>
                   {txStatus && (
                     <span className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${txStatus.color}`}>
                       {txStatus.label}
                     </span>
                   )}
                 </div>
-                <p className="text-[10px] text-gray-400">{formatDateTime(tx.createdAt)}</p>
-                {tx.reference && <p className="text-[10px] text-gray-300">Ref: {tx.reference}</p>}
+                <p className="text-[10px] text-surface-400 dark:text-surface-500">{formatDateTime(tx.createdAt)}</p>
+                {tx.reference && <p className="text-[10px] text-surface-400 dark:text-surface-500">Ref: {tx.reference}</p>}
                 {tx.status === "processing" && (
-                  <p className="text-[10px] text-orange-500 flex items-center gap-1 mt-0.5">
+                  <p className="text-[10px] text-warning-500 flex items-center gap-1 mt-0.5">
                     <FaClock className="h-2 w-2" /> Expected credit: Within 24 hours
                   </p>
                 )}
               </div>
-              <p className={`text-sm font-bold ${isCredit ? "text-green-600" : "text-red-500"}`}>
+              <p className={`text-sm font-bold ${isCredit ? "text-success-600 dark:text-success-400" : "text-danger-500"}`}>
                 {isCredit ? "+" : "-"}{formatCurrency(tx.amount, tx.currency || "INR")}
               </p>
             </div>
@@ -403,8 +403,8 @@ const WalletPanel = ({ onClose, role }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/30 pt-16">
-      <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-xl mx-4 max-h-[80vh] overflow-y-auto">
-        <button onClick={onClose} className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200">
+      <div className="relative w-full max-w-md rounded-2xl bg-white dark:bg-surface-100 p-6 shadow-xl mx-4 max-h-[80vh] overflow-y-auto">
+        <button onClick={onClose} className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-surface-100 dark:bg-surface-200 text-surface-500 dark:text-surface-400 hover:bg-surface-200 dark:hover:bg-surface-200">
           <FaTimes />
         </button>
 
@@ -415,12 +415,12 @@ const WalletPanel = ({ onClose, role }) => {
             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-brand-50">
               <FaWallet className="h-7 w-7 text-brand-600" />
             </div>
-            <h2 className="text-xl font-bold text-gray-800">Create Your Wallet</h2>
-            <p className="mt-2 text-sm text-gray-400">A wallet is needed for payments, refunds, and earnings.</p>
+            <h2 className="text-xl font-bold text-surface-800 dark:text-surface-800">Create Your Wallet</h2>
+            <p className="mt-2 text-sm text-surface-400 dark:text-surface-500">A wallet is needed for payments, refunds, and earnings.</p>
             <button
               onClick={handleCreate}
               disabled={creating}
-              className="mt-6 w-full rounded-xl bg-brand-600 px-6 py-3 text-sm font-bold text-white hover:bg-brand-700 disabled:opacity-50"
+              className="mt-6 w-full rounded-xl bg-emerald-600 px-6 py-3 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
             >
               {creating ? "Creating..." : "Create Wallet"}
             </button>
@@ -428,10 +428,10 @@ const WalletPanel = ({ onClose, role }) => {
         ) : (
           <div className="space-y-4">
             {/* Balance Card */}
-            <div className="rounded-xl bg-brand-600 p-5 text-white">
+            <div className="rounded-xl bg-emerald-600 p-5 text-white">
               <div className="flex items-center justify-between">
                 <p className="text-sm text-white/70">Total Balance</p>
-                <span className="rounded-full bg-white/20 px-3 py-0.5 text-xs">{wallet.currency}</span>
+                <span className="rounded-full bg-white dark:bg-surface-100/20 px-3 py-0.5 text-xs">{wallet.currency}</span>
               </div>
               <p className="mt-2 text-3xl font-bold">
                 {formatCurrency(wallet.balance, wallet.currency)}
@@ -448,8 +448,8 @@ const WalletPanel = ({ onClose, role }) => {
               </div>
               <div className="mt-3 flex items-center justify-between border-t border-white/20 pt-3 text-sm">
                 <span className="text-white/70">ID: {wallet._id.slice(-8).toUpperCase()}</span>
-                <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${wallet.isActive ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>
-                  <span className={`h-1.5 w-1.5 rounded-full ${wallet.isActive ? "bg-green-500" : "bg-red-500"}`} />
+                <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${wallet.isActive ? "bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300" : "bg-danger-50 text-danger-700 dark:bg-danger-500/10 dark:text-danger-400"}`}>
+                  <span className={`h-1.5 w-1.5 rounded-full ${wallet.isActive ? "bg-success-500" : "bg-danger-50 dark:bg-danger-500/100"}`} />
                   {wallet.isActive ? "Active" : "Inactive"}
                 </span>
               </div>
@@ -457,36 +457,36 @@ const WalletPanel = ({ onClose, role }) => {
 
             {/* Actions */}
             <div className="space-y-2">
-              <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider">Actions</h3>
+              <h3 className="text-sm font-bold text-surface-500 dark:text-surface-400 uppercase tracking-wider">Actions</h3>
 
               {isCollector ? (
                 <button
                   onClick={() => { setShowWithdraw(true); setShowTopUp(false); setActiveTab(null); }}
                   className={`flex w-full items-center gap-4 rounded-xl border p-3 transition-colors ${
-                    showWithdraw ? "border-blue-300 bg-blue-50" : "border-gray-100 bg-gray-50 hover:bg-gray-100"
+                    showWithdraw ? "border-info-300 bg-info-50" : "border-surface-100 dark:border-surface-200/60 bg-surface-50 dark:bg-surface-200/40 hover:bg-surface-100 dark:hover:bg-surface-200"
                   }`}
                 >
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100">
-                    <FaUniversity className="h-4 w-4 text-blue-600" />
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-info-50 dark:bg-info-500/10">
+                    <FaUniversity className="h-4 w-4 text-info-600" />
                   </div>
                   <div className="text-left">
-                    <p className="font-semibold text-gray-700 text-sm">Withdraw Money</p>
-                    <p className="text-xs text-gray-400">Transfer to your bank account</p>
+                    <p className="font-semibold text-surface-700 dark:text-surface-300 text-sm">Withdraw Money</p>
+                    <p className="text-xs text-surface-400 dark:text-surface-500">Transfer to your bank account</p>
                   </div>
                 </button>
               ) : (
                 <button
                   onClick={() => { setShowTopUp(true); setShowWithdraw(false); setActiveTab(null); }}
                   className={`flex w-full items-center gap-4 rounded-xl border p-3 transition-colors ${
-                    showTopUp ? "border-green-300 bg-green-50" : "border-gray-100 bg-gray-50 hover:bg-gray-100"
+                    showTopUp ? "border-success-300 bg-success-50" : "border-surface-100 dark:border-surface-200/60 bg-surface-50 dark:bg-surface-200/40 hover:bg-surface-100 dark:hover:bg-surface-200"
                   }`}
                 >
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100">
-                    <FaMoneyBillWave className="h-4 w-4 text-green-600" />
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-success-50 dark:bg-success-500/10">
+                    <FaMoneyBillWave className="h-4 w-4 text-success-600 dark:text-success-400" />
                   </div>
                   <div className="text-left">
-                    <p className="font-semibold text-gray-700 text-sm">Add Money</p>
-                    <p className="text-xs text-gray-400">Top up via Razorpay</p>
+                    <p className="font-semibold text-surface-700 dark:text-surface-300 text-sm">Add Money</p>
+                    <p className="text-xs text-surface-400 dark:text-surface-500">Top up via Razorpay</p>
                   </div>
                 </button>
               )}
@@ -495,15 +495,15 @@ const WalletPanel = ({ onClose, role }) => {
                 <button
                   onClick={() => loadTabData("withdrawals")}
                   className={`flex w-full items-center gap-4 rounded-xl border p-3 transition-colors ${
-                    activeTab === "withdrawals" ? "border-orange-300 bg-orange-50" : "border-gray-100 bg-gray-50 hover:bg-gray-100"
+                    activeTab === "withdrawals" ? "border-warning-300 bg-warning-50" : "border-surface-100 dark:border-surface-200/60 bg-surface-50 dark:bg-surface-200/40 hover:bg-surface-100 dark:hover:bg-surface-200"
                   }`}
                 >
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-100">
-                    <FaCreditCard className="h-4 w-4 text-orange-600" />
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-warning-50 dark:bg-warning-500/10">
+                    <FaCreditCard className="h-4 w-4 text-warning-600" />
                   </div>
                   <div className="text-left">
-                    <p className="font-semibold text-gray-700 text-sm">Withdrawal History</p>
-                    <p className="text-xs text-gray-400">View all withdrawal requests</p>
+                    <p className="font-semibold text-surface-700 dark:text-surface-300 text-sm">Withdrawal History</p>
+                    <p className="text-xs text-surface-400 dark:text-surface-500">View all withdrawal requests</p>
                   </div>
                 </button>
               )}
@@ -511,37 +511,37 @@ const WalletPanel = ({ onClose, role }) => {
               <button
                 onClick={() => loadTabData("transactions")}
                 className={`flex w-full items-center gap-4 rounded-xl border p-3 transition-colors ${
-                  activeTab === "transactions" ? "border-blue-300 bg-blue-50" : "border-gray-100 bg-gray-50 hover:bg-gray-100"
+                  activeTab === "transactions" ? "border-info-300 bg-info-50" : "border-surface-100 dark:border-surface-200/60 bg-surface-50 dark:bg-surface-200/40 hover:bg-surface-100 dark:hover:bg-surface-200"
                 }`}
               >
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100">
-                  <FaHistory className="h-4 w-4 text-blue-600" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-info-50 dark:bg-info-500/10">
+                  <FaHistory className="h-4 w-4 text-info-600" />
                 </div>
                 <div className="text-left">
-                  <p className="font-semibold text-gray-700 text-sm">Transaction History</p>
-                  <p className="text-xs text-gray-400">View all transactions</p>
+                  <p className="font-semibold text-surface-700 dark:text-surface-300 text-sm">Transaction History</p>
+                  <p className="text-xs text-surface-400 dark:text-surface-500">View all transactions</p>
                 </div>
               </button>
             </div>
 
             {/* Top-up Section (Residents) */}
             {showTopUp && !isCollector && (
-              <div className="rounded-xl border border-green-200 bg-green-50 p-4 space-y-3">
-                <h4 className="text-sm font-bold text-green-800">Add Money to Wallet</h4>
+              <div className="rounded-xl border border-success-200 bg-success-50 p-4 space-y-3">
+                <h4 className="text-sm font-bold text-success-800">Add Money to Wallet</h4>
                 <input
                   type="number"
                   min="1"
                   placeholder="Enter amount (₹)"
                   value={topUpAmount}
                   onChange={(e) => setTopUpAmount(e.target.value)}
-                  className="w-full rounded-lg border border-green-200 bg-white px-4 py-2.5 text-sm focus:border-green-500 focus:outline-none"
+                  className="w-full rounded-lg border border-success-200 bg-white dark:bg-surface-100 px-4 py-2.5 text-sm focus:border-green-500 focus:outline-none"
                 />
                 <div className="flex gap-2">
                   {[100, 200, 500, 1000].map((amt) => (
                     <button
                       key={amt}
                       onClick={() => setTopUpAmount(String(amt))}
-                      className="flex-1 rounded-lg border border-green-200 bg-white py-1.5 text-xs font-medium text-green-700 hover:bg-green-100"
+                      className="flex-1 rounded-lg border border-success-200 bg-white dark:bg-surface-100 py-1.5 text-xs font-medium text-success-700 hover:bg-success-50 dark:bg-success-500/10"
                     >
                       ₹{amt}
                     </button>
@@ -550,7 +550,7 @@ const WalletPanel = ({ onClose, role }) => {
                 <button
                   onClick={handleTopUp}
                   disabled={toppingUp || !topUpAmount}
-                  className="w-full rounded-lg bg-green-600 py-2.5 text-sm font-bold text-white hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="w-full rounded-lg bg-success-600 py-2.5 text-sm font-bold text-white hover:bg-success-700 disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {toppingUp ? <><FaSpinner className="animate-spin" /> Processing...</> : "Pay with Razorpay"}
                 </button>
@@ -559,7 +559,7 @@ const WalletPanel = ({ onClose, role }) => {
 
             {/* Withdraw Section (Collectors) */}
             {showWithdraw && isCollector && (
-              <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
+              <div className="rounded-xl border border-info-200 bg-info-50 p-4">
                 <WithdrawForm wallet={wallet} onDone={() => { setShowWithdraw(false); load(); }} />
               </div>
             )}
@@ -574,9 +574,9 @@ const WalletPanel = ({ onClose, role }) => {
               <TransactionHistory transactions={transactions} wallet={wallet} loading={loadingData} />
             )}
 
-            <div className="flex items-center justify-between rounded-xl bg-gray-50 px-4 py-3 text-sm">
-              <span className="text-gray-400">Created</span>
-              <span className="font-medium text-gray-700">{formatDateTime(wallet.createdAt)}</span>
+            <div className="flex items-center justify-between rounded-xl bg-surface-50 dark:bg-surface-200/40 px-4 py-3 text-sm">
+              <span className="text-surface-400 dark:text-surface-500">Created</span>
+              <span className="font-medium text-surface-700 dark:text-surface-300">{formatDateTime(wallet.createdAt)}</span>
             </div>
           </div>
         )}

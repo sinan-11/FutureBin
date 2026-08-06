@@ -5,6 +5,24 @@ import store from "../store/store";
 import { getRefreshedToken } from "../api/axiosInstance";
 import { setAccessToken } from "../store/slices/authSlice";
 
+const SOCKET_URL = API_BASE_URL.replace(/\/api\/?$/, "");
+
+const TOKEN_REFRESH_MARGIN_MS = 2 * 60 * 1000;
+
+const getTokenExpiry = (token) => {
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    return payload.exp ? payload.exp * 1000 : null;
+  } catch {
+    return null;
+  }
+};
+
+const isTokenExpiredOrExpiring = (token, marginMs = TOKEN_REFRESH_MARGIN_MS) => {
+  const expiresAt = getTokenExpiry(token);
+  return expiresAt === null || expiresAt - Date.now() < marginMs;
+};
+
 const useSocket = ({ collectorEvents = {}, residentEvents = {}, onReconnect } = {}) => {
   const socketRef = useRef(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -13,6 +31,7 @@ const useSocket = ({ collectorEvents = {}, residentEvents = {}, onReconnect } = 
   const residentEventsRef = useRef(residentEvents);
   const onReconnectRef = useRef(onReconnect);
   const hasReconnectedRef = useRef(false);
+  const refreshingRef = useRef(false);
 
   useEffect(() => {
     collectorEventsRef.current = collectorEvents;
@@ -32,52 +51,47 @@ const useSocket = ({ collectorEvents = {}, residentEvents = {}, onReconnect } = 
 
     if (!token || !userRole) return;
 
-    const socket = io(API_BASE_URL.replace("/api", ""), {
+    const ensureFreshToken = () => {
+      const current = store.getState().auth.accessToken;
+      if (!current || !isTokenExpiredOrExpiring(current)) {
+        return Promise.resolve(current);
+      }
+      if (refreshingRef.current) {
+        return Promise.resolve(store.getState().auth.accessToken);
+      }
+      refreshingRef.current = true;
+      return getRefreshedToken()
+        .then((freshToken) => {
+          if (freshToken) {
+            store.dispatch(setAccessToken(freshToken));
+          }
+          return store.getState().auth.accessToken;
+        })
+        .catch(() => store.getState().auth.accessToken)
+        .finally(() => {
+          refreshingRef.current = false;
+        });
+    };
+
+    const socket = io(SOCKET_URL, {
       auth: { token },
       withCredentials: true,
-      transports: ["websocket", "polling"],
+      transports: ["polling", "websocket"],
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
       reconnectionAttempts: Infinity,
+      timeout: 20000,
     });
 
     socket.on("connect", () => {
       setIsConnected(true);
 
       if (hasReconnectedRef.current) {
+        hasReconnectedRef.current = false;
         if (onReconnectRef.current) {
           onReconnectRef.current();
         }
-        hasReconnectedRef.current = false;
-      }
-    });
-
-    socket.io.on("reconnect_attempt", () => {
-      const currentToken = store.getState().auth.accessToken;
-      if (!currentToken) return;
-
-      socket.auth = { token: currentToken };
-
-      let expiresAt = null;
-      try {
-        const payload = JSON.parse(atob(currentToken.split(".")[1]));
-        if (payload.exp) {
-          expiresAt = payload.exp * 1000;
-        }
-      } catch {
-        // ignore malformed tokens
-      }
-
-      if (expiresAt && expiresAt - Date.now() < 2 * 60 * 1000) {
-        getRefreshedToken()
-          .then((freshToken) => {
-            if (freshToken) {
-              store.dispatch(setAccessToken(freshToken));
-              socket.auth = { token: freshToken };
-            }
-          })
-          .catch(() => {});
       }
     });
 
@@ -86,16 +100,38 @@ const useSocket = ({ collectorEvents = {}, residentEvents = {}, onReconnect } = 
       hasReconnectedRef.current = true;
     });
 
+    const applyFreshToken = () => {
+      ensureFreshToken().then((freshToken) => {
+        if (freshToken) {
+          socket.auth = { token: freshToken };
+        }
+      });
+    };
+
     socket.on("connect_error", (err) => {
       console.warn("[SOCKET] Connection error:", err.message);
+      applyFreshToken();
     });
 
-    const events = userRole === "collector"
-      ? collectorEventsRef.current
-      : residentEventsRef.current;
+    socket.io.on("reconnect_attempt", applyFreshToken);
 
-    for (const [event, handler] of Object.entries(events)) {
-      socket.on(event, handler);
+    const eventNames = new Set([
+      ...Object.keys(collectorEventsRef.current),
+      ...Object.keys(residentEventsRef.current),
+    ]);
+
+    const dispatch = (event) => (...args) => {
+      const map = userRole === "collector"
+        ? collectorEventsRef.current
+        : residentEventsRef.current;
+      const handler = map[event];
+      if (typeof handler === "function") {
+        handler(...args);
+      }
+    };
+
+    for (const event of eventNames) {
+      socket.on(event, dispatch(event));
     }
 
     socketRef.current = socket;
@@ -103,6 +139,7 @@ const useSocket = ({ collectorEvents = {}, residentEvents = {}, onReconnect } = 
     return () => {
       socket.removeAllListeners();
       socket.disconnect();
+      socketRef.current = null;
     };
   }, []);
 

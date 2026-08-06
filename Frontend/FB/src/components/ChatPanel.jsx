@@ -110,13 +110,11 @@ const ChatPanel = ({ pickup, socketRef, onClose, isConnected = false }) => {
   }, [loadMessages]);
 
   useEffect(() => {
-    if (!isConnected) {
-      const interval = setInterval(() => {
-        loadMessages(true);
-      }, CHAT_FALLBACK_POLL_INTERVAL);
-      return () => clearInterval(interval);
-    }
-  }, [isConnected, loadMessages]);
+    const interval = setInterval(() => {
+      loadMessages(true);
+    }, CHAT_FALLBACK_POLL_INTERVAL);
+    return () => clearInterval(interval);
+  }, [loadMessages]);
 
   useEffect(() => {
     if (isConnected) {

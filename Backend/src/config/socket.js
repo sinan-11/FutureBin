@@ -47,6 +47,7 @@ export const initSocket = (server) => {
         collectorSockets.set(userId, new Set());
       }
       collectorSockets.get(userId).add(socket.id);
+      socket.join("collectors");
       console.log(`[SOCKET] Collector ${userId} now has ${collectorSockets.get(userId).size} socket(s)`);
     }
 
@@ -209,14 +210,9 @@ export const notifyCollectorById = (collectorId, event, data) => {
 export const notifyCollectorsByIds = (collectorIds, event, data) => {
   if (!io) return;
 
-  if (!collectorIds || collectorIds.length === 0) {
-    io.to("collectors").emit(event, data);
-    return;
-  }
-
   let emitted = false;
 
-  for (const id of collectorIds) {
+  for (const id of collectorIds || []) {
     const sockets = collectorSockets.get(String(id));
     if (sockets) {
       for (const sid of sockets) {

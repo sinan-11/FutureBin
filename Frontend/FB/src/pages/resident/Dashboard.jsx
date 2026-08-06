@@ -12,8 +12,7 @@ import useSocket from "../../hooks/useSocket";
 import { getMyPickupsService, cancelPickupService, getPickupOtpService, confirmExtraPaymentService, payExtraWalletService } from "../../services/pickupService";
 import { getPickupReviewsService, createReviewService } from "../../services/reviewService";
 import { ROUTES } from "../../utils/constants";
-import { getErrorMessage, formatDateTime, capitalize, formatCurrency } from "../../utils/helpers";
-import { isValidCoordinates } from "../../utils/map";
+import { getErrorMessage, formatDateTime, formatCurrency } from "../../utils/helpers";
 import { playNotificationSound } from "../../utils/sound";
 import ResidentLayout from "../../layouts/ResidentLayout";
 import WalletPanel from "../../components/WalletPanel";
@@ -235,6 +234,11 @@ const CancelConfirmationModal = ({ request, onClose, onConfirm }) => {
 const OTPModal = ({ requestId, onClose }) => {
   const [otpData, setOtpData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const onCloseRef = useRef(onClose);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   const fetchOtp = useCallback(async () => {
     setLoading(true);
@@ -243,7 +247,7 @@ const OTPModal = ({ requestId, onClose }) => {
       setOtpData(res.data || res);
     } catch (error) {
       toast.error(getErrorMessage(error));
-      onClose();
+      onCloseRef.current();
     } finally {
       setLoading(false);
     }
@@ -302,7 +306,7 @@ const Dashboard = () => {
   const [requests, setRequests] = useState({ current: [], completed: [], cancelled: [] });
   const requestsRef = useRef(requests);
   const chatOpenRef = useRef(false);
-  const [cancelling, setCancelling] = useState(null);
+  const [, setCancelling] = useState(null);
   const [showWallet, setShowWallet] = useState(false);
   const [otpModal, setOtpModal] = useState(null);
   const [extraPaymentModal, setExtraPaymentModal] = useState(null);
@@ -359,42 +363,44 @@ const Dashboard = () => {
     }
   }, []);
 
-  doFetchRouteRef.current = async (collectorLoc, pickupCoords) => {
-    const now = Date.now();
-    if (now - lastFetchRef.current < 5000) return;
-    lastFetchRef.current = now;
+  useEffect(() => {
+    doFetchRouteRef.current = async (collectorLoc, pickupCoords) => {
+      const now = Date.now();
+      if (now - lastFetchRef.current < 5000) return;
+      lastFetchRef.current = now;
 
-    const result = await fetchRouteBetween(
-      [collectorLoc.longitude, collectorLoc.latitude],
-      pickupCoords
-    );
+      const result = await fetchRouteBetween(
+        [collectorLoc.longitude, collectorLoc.latitude],
+        pickupCoords
+      );
 
-    if (result) {
-      setRouteData(result);
+      if (result) {
+        setRouteData(result);
 
-      if (result.durationSec <= 300 && activeRequestRef.current) {
-        const pickupId = activeRequestRef.current._id;
-        if (!nearbyNotifiedRef.current.has(pickupId)) {
-          nearbyNotifiedRef.current.add(pickupId);
-          toast.info(
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-100">
-                <FaTruck className="h-5 w-5 text-brand-600" />
-              </div>
-              <div>
-                <p className="font-semibold text-surface-800 dark:text-surface-800">Collector is almost here!</p>
-                <p className="text-sm text-surface-500 dark:text-surface-400">ETA: {result.duration} min</p>
-              </div>
-            </div>,
-            { autoClose: 8000 }
-          );
-          playNotificationSound();
+        if (result.durationSec <= 300 && activeRequestRef.current) {
+          const pickupId = activeRequestRef.current._id;
+          if (!nearbyNotifiedRef.current.has(pickupId)) {
+            nearbyNotifiedRef.current.add(pickupId);
+            toast.info(
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-100">
+                  <FaTruck className="h-5 w-5 text-brand-600" />
+                </div>
+                <div>
+                  <p className="font-semibold text-surface-800 dark:text-surface-800">Collector is almost here!</p>
+                  <p className="text-sm text-surface-500 dark:text-surface-400">ETA: {result.duration} min</p>
+                </div>
+              </div>,
+              { autoClose: 8000 }
+            );
+            playNotificationSound();
+          }
         }
+      } else {
+        console.error("[TRACKING] Route fetch returned null, keeping previous routeData");
       }
-    } else {
-      console.error("[TRACKING] Route fetch returned null, keeping previous routeData");
-    }
-  };
+    };
+  }, [fetchRouteBetween]);
 
   const startPolling = useCallback(() => {
     if (!pollRef.current) {
@@ -415,12 +421,12 @@ const Dashboard = () => {
 
   const { socketRef, isConnected } = useSocket({
     residentEvents: {
-      "pickup-accepted": useCallback((data) => {
+      "pickup-accepted": useCallback(() => {
         toast.info("Collector accepted your pickup!");
         loadRequests();
       }, [loadRequests]),
 
-      "collector-arrived": useCallback((data) => {
+      "collector-arrived": useCallback(() => {
         toast.info("Collector has arrived!");
         setCollectorLocation(null);
         setRouteData(null);
@@ -465,22 +471,22 @@ const Dashboard = () => {
         }
       }, [loadRequests]),
 
-      "otp-regenerated": useCallback((data) => {
+      "otp-regenerated": useCallback(() => {
         toast.info("New OTP sent to your email.");
         loadRequests();
       }, [loadRequests]),
 
-      "pickup-completed": useCallback((data) => {
+      "pickup-completed": useCallback(() => {
         toast.success("Pickup completed!");
         loadRequests();
       }, [loadRequests]),
 
-      "pickup-cancelled": useCallback((data) => {
+      "pickup-cancelled": useCallback(() => {
         toast.info("A pickup request was cancelled.");
         loadRequests();
       }, [loadRequests]),
 
-      "pickup-expired": useCallback((data) => {
+      "pickup-expired": useCallback(() => {
         toast.warning("Pickup request expired.");
         loadRequests();
       }, [loadRequests]),
@@ -494,12 +500,12 @@ const Dashboard = () => {
         }
       }, [loadRequests]),
 
-      "cash-confirmed": useCallback((data) => {
+      "cash-confirmed": useCallback(() => {
         toast.info("Collector confirmed cash received.");
         loadRequests();
       }, [loadRequests]),
 
-      "subscription-pickup-created": useCallback((data) => {
+      "subscription-pickup-created": useCallback(() => {
         toast.info("A scheduled pickup has been created from your subscription.");
         loadRequests();
       }, [loadRequests]),

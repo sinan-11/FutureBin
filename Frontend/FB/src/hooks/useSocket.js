@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
 import { API_BASE_URL } from "../utils/constants";
 import store from "../store/store";

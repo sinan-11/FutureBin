@@ -109,12 +109,6 @@ const CreateSubscription = () => {
     }
   };
 
-  const handleLogout = async () => {
-    await logoutService();
-    toast.success("Logged out");
-    navigate(ROUTES.HOME, { replace: true });
-  };
-
   const handleLocationChange = ({ coordinates, address }) => {
     setForm((prev) => ({
       ...prev,

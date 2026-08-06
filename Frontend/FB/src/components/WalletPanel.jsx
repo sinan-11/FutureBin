@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import {
   FaWallet, FaTimes, FaMoneyBillWave, FaHistory, FaArrowDown, FaArrowUp,
-  FaSpinner, FaUniversity, FaCheckCircle, FaClock, FaExclamationTriangle,
+  FaSpinner, FaUniversity, FaClock, FaExclamationTriangle,
   FaCreditCard,
 } from "react-icons/fa";
 import { toast } from "react-toastify";
@@ -82,7 +82,7 @@ const WithdrawForm = ({ wallet, onDone }) => {
   const [bankDetails, setBankDetails] = useState({
     accountHolderName: "", accountNumber: "", ifscCode: "", bankName: "",
   });
-  const [hasSavedBank, setHasSavedBank] = useState(false);
+  const [, setHasSavedBank] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [withdrawing, setWithdrawing] = useState(false);
   const [savingBank, setSavingBank] = useState(false);

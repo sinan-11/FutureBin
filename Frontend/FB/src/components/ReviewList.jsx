@@ -1,5 +1,4 @@
 import ReviewCard from "./ReviewCard";
-import EmptyState from "./EmptyState";
 
 const ReviewList = ({ reviews = [], title = "Reviews" }) => {
   return (

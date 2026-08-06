@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import {
-  FaStar, FaSearch, FaTrash, FaUsers,
+  FaStar, FaTrash,
   FaArrowUp, FaArrowDown, FaFilter,
 } from "react-icons/fa";
 import { toast } from "react-toastify";
@@ -9,7 +9,6 @@ import AdminLayout from "../../layouts/AdminLayout";
 import Button from "../../components/Button";
 import PageHeader from "../../components/PageHeader";
 import StarRating from "../../components/StarRating";
-import RatingBreakdown from "../../components/RatingBreakdown";
 import Loader from "../../components/Loader";
 import {
   getAllAdminReviewsService,

@@ -66,13 +66,9 @@ export const getUserReviewsService = async (userId, page = 1, limit = 10) => {
 };
 
 export const getUserReviewSummaryService = async (userId) => {
-  try {
-    const response = await reviewApi.getUserReviewSummary(userId);
-    store.dispatch(setReviewSummary(response.data.data));
-    return response.data.data;
-  } catch (error) {
-    throw error;
-  }
+  const response = await reviewApi.getUserReviewSummary(userId);
+  store.dispatch(setReviewSummary(response.data.data));
+  return response.data.data;
 };
 
 export const getAllAdminReviewsService = async (page = 1, limit = 20, filters = {}) => {
@@ -93,13 +89,9 @@ export const getAllAdminReviewsService = async (page = 1, limit = 20, filters = 
 };
 
 export const getAdminReviewStatsService = async () => {
-  try {
-    const response = await reviewApi.getAdminReviewStats();
-    store.dispatch(setAdminStats(response.data.data));
-    return response.data.data;
-  } catch (error) {
-    throw error;
-  }
+  const response = await reviewApi.getAdminReviewStats();
+  store.dispatch(setAdminStats(response.data.data));
+  return response.data.data;
 };
 
 export const deleteAdminReviewService = async (reviewId) => {

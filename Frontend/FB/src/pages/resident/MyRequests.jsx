@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   FaPlus, FaCheckCircle, FaTimesCircle,
   FaHourglass, FaTruck, FaWeight,
-  FaMoneyBillWave, FaKey, FaCalendarAlt, FaRecycle, FaStar,
+  FaMoneyBillWave, FaKey, FaCalendarAlt, FaRecycle,
 } from "react-icons/fa";
 import { toast } from "react-toastify";
 
@@ -32,6 +32,11 @@ const STATUS_CONFIG = {
 const OTPModal = ({ requestId, onClose }) => {
   const [otpData, setOtpData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const onCloseRef = useRef(onClose);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   const fetchOtp = useCallback(async () => {
     setLoading(true);
@@ -40,7 +45,7 @@ const OTPModal = ({ requestId, onClose }) => {
       setOtpData(res.data || res);
     } catch (error) {
       toast.error(getErrorMessage(error));
-      onClose();
+      onCloseRef.current();
     } finally {
       setLoading(false);
     }
@@ -275,12 +280,12 @@ const MyRequests = () => {
 
   const { isConnected } = useSocket({
     residentEvents: {
-      "pickup-accepted": useCallback((data) => {
+      "pickup-accepted": useCallback(() => {
         toast.info("Collector accepted your pickup!");
         loadRequests();
       }, [loadRequests]),
 
-      "collector-arrived": useCallback((data) => {
+      "collector-arrived": useCallback(() => {
         toast.info("Collector has arrived!");
         loadRequests();
       }, [loadRequests]),
@@ -303,22 +308,22 @@ const MyRequests = () => {
         }
       }, [loadRequests]),
 
-      "otp-regenerated": useCallback((data) => {
+      "otp-regenerated": useCallback(() => {
         toast.info("New OTP sent to your email.");
         loadRequests();
       }, [loadRequests]),
 
-      "pickup-completed": useCallback((data) => {
+      "pickup-completed": useCallback(() => {
         toast.success("Pickup completed!");
         loadRequests();
       }, [loadRequests]),
 
-      "pickup-cancelled": useCallback((data) => {
+      "pickup-cancelled": useCallback(() => {
         toast.info("A pickup request was cancelled.");
         loadRequests();
       }, [loadRequests]),
 
-      "pickup-expired": useCallback((data) => {
+      "pickup-expired": useCallback(() => {
         toast.warning("Pickup request expired.");
         loadRequests();
       }, [loadRequests]),

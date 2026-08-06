@@ -1,5 +1,3 @@
-import StarRating from "./StarRating";
-
 const RatingBreakdown = ({ breakdown = {}, totalReviews = 0 }) => {
   if (totalReviews === 0) return null;
 

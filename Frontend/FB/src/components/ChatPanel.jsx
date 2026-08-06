@@ -40,7 +40,10 @@ const ChatPanel = ({ pickup, socketRef, onClose }) => {
   const messagesContainerRef = useRef(null);
   const isNearBottomRef = useRef(true);
   const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   const pickupId = pickup?._id;
   const isChatActive = CHAT_ACTIVE_STATUSES.includes(pickup?.status);

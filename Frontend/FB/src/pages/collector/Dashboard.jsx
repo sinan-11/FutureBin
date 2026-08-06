@@ -26,7 +26,6 @@ import {
   arriveAtPickupService,
   verifyWeightService,
   generateOtpService,
-  regenerateOtpService,
   verifyOtpService,
   confirmCashService,
 } from "../../services/pickupService";
@@ -77,7 +76,6 @@ const Dashboard = () => {
   const [weightInput, setWeightInput] = useState("");
   const [otpInput, setOtpInput] = useState("");
   const [mapOpen, setMapOpen] = useState(null);
-  const [locationError, setLocationError] = useState(null);
   const [chatOpen, setChatOpen] = useState(null);
   const [reviewedPickups, setReviewedPickups] = useState({});
   const [reviewModal, setReviewModal] = useState(null);
@@ -179,7 +177,7 @@ const Dashboard = () => {
       ),
 
       "pickup-cancelled": useCallback(
-        (data) => {
+        () => {
           toast.info("A resident cancelled a pickup");
           loadData();
         },
@@ -187,7 +185,7 @@ const Dashboard = () => {
       ),
 
       "pickup-completed": useCallback(
-        (data) => {
+        () => {
           toast.success("Pickup completed!");
           loadData();
         },
@@ -195,7 +193,7 @@ const Dashboard = () => {
       ),
 
       "pickup-expired": useCallback(
-        (data) => {
+        () => {
           loadData();
         },
         [loadData]
@@ -281,7 +279,6 @@ const Dashboard = () => {
     }
 
     if (!navigator.geolocation) {
-      setLocationError("Geolocation not supported");
       return;
     }
 
@@ -289,7 +286,6 @@ const Dashboard = () => {
 
     watchIdRef.current = navigator.geolocation.watchPosition(
       (pos) => {
-        setLocationError(null);
         const { latitude, longitude } = pos.coords;
 
         const socket = socketRef.current;
@@ -303,7 +299,6 @@ const Dashboard = () => {
       },
       (error) => {
         console.error("[GPS] watchPosition error:", error);
-        setLocationError(error.message);
       },
       { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
     );

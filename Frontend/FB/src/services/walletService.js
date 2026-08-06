@@ -6,7 +6,7 @@ export const getWalletService = async () => {
     const res = await walletApi.getMyWallet();
     return res.data.data;
   } catch (error) {
-    throw new Error(getErrorMessage(error));
+    throw new Error(getErrorMessage(error), { cause: error });
   }
 };
 
@@ -15,7 +15,7 @@ export const createWalletService = async () => {
     const res = await walletApi.createWallet();
     return res.data;
   } catch (error) {
-    throw new Error(getErrorMessage(error));
+    throw new Error(getErrorMessage(error), { cause: error });
   }
 };
 
@@ -24,7 +24,7 @@ export const getTransactionsService = async () => {
     const res = await walletApi.getTransactions();
     return res.data.data.transactions;
   } catch (error) {
-    throw new Error(getErrorMessage(error));
+    throw new Error(getErrorMessage(error), { cause: error });
   }
 };
 
@@ -33,7 +33,7 @@ export const withdrawFundsService = async (amount, bankDetails) => {
     const res = await walletApi.withdrawFunds(amount, bankDetails);
     return res.data;
   } catch (error) {
-    throw new Error(getErrorMessage(error));
+    throw new Error(getErrorMessage(error), { cause: error });
   }
 };
 
@@ -42,7 +42,7 @@ export const getWithdrawalsService = async () => {
     const res = await walletApi.getWithdrawals();
     return res.data.data.withdrawals;
   } catch (error) {
-    throw new Error(getErrorMessage(error));
+    throw new Error(getErrorMessage(error), { cause: error });
   }
 };
 
@@ -51,6 +51,6 @@ export const getWithdrawalByIdService = async (id) => {
     const res = await walletApi.getWithdrawalById(id);
     return res.data.data.withdrawal;
   } catch (error) {
-    throw new Error(getErrorMessage(error));
+    throw new Error(getErrorMessage(error), { cause: error });
   }
 };

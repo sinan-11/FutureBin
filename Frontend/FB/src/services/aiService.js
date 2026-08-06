@@ -6,7 +6,7 @@ export const getConversationsService = async () => {
     const res = await aiApi.getConversations();
     return res.data.data.conversations;
   } catch (error) {
-    throw new Error(getErrorMessage(error));
+    throw new Error(getErrorMessage(error), { cause: error });
   }
 };
 
@@ -15,7 +15,7 @@ export const createConversationService = async (title) => {
     const res = await aiApi.createConversation(title);
     return res.data.data.conversation;
   } catch (error) {
-    throw new Error(getErrorMessage(error));
+    throw new Error(getErrorMessage(error), { cause: error });
   }
 };
 
@@ -24,7 +24,7 @@ export const getConversationMessagesService = async (id, params = {}) => {
     const res = await aiApi.getConversationMessages(id, params);
     return res.data.data;
   } catch (error) {
-    throw new Error(getErrorMessage(error));
+    throw new Error(getErrorMessage(error), { cause: error });
   }
 };
 
@@ -33,7 +33,7 @@ export const deleteConversationService = async (id) => {
     const res = await aiApi.deleteConversation(id);
     return res.data;
   } catch (error) {
-    throw new Error(getErrorMessage(error));
+    throw new Error(getErrorMessage(error), { cause: error });
   }
 };
 
@@ -42,7 +42,7 @@ export const sendChatService = async (payload) => {
     const res = await aiApi.sendChat(payload);
     return res.data.data;
   } catch (error) {
-    throw new Error(getErrorMessage(error));
+    throw new Error(getErrorMessage(error), { cause: error });
   }
 };
 
@@ -52,6 +52,6 @@ export const streamChatService = async (payload, onEvent) => {
       onEvent(event);
     }
   } catch (error) {
-    throw new Error(getErrorMessage(error));
+    throw new Error(getErrorMessage(error), { cause: error });
   }
 };

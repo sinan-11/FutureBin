@@ -1,9 +1,9 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import {
   FaTruck, FaCheckCircle, FaHourglass, FaWeight,
-  FaMoneyBillWave, FaUser, FaArrowRight,
+  FaMoneyBillWave, FaUser,
   FaRecycle, FaKey, FaClipboardCheck,
-  FaMap, FaBoxOpen, FaStar,
+  FaMap, FaBoxOpen,
 } from "react-icons/fa";
 import { toast } from "react-toastify";
 
@@ -24,7 +24,6 @@ import { ListSkeleton } from "../../components/Skeleton";
 import OtpInput from "../../components/OtpInput";
 import PickupRouteMap from "../../components/map/PickupRouteMap";
 import PageHeader from "../../components/PageHeader";
-import EmptyState from "../../components/EmptyState";
 import Button from "../../components/Button";
 import Input from "../../components/Input";
 import ReviewButton from "../../components/ReviewButton";
@@ -77,7 +76,6 @@ const PickupCard = ({
   onVerifyWeight,
   onVerifyOtp,
   onConfirmCash,
-  onGenerateOtp,
   loading,
   mapOpen,
   onToggleMap,
@@ -319,30 +317,30 @@ const MyPickups = () => {
 
   const { isConnected } = useSocket({
     collectorEvents: {
-      "pickup-cancelled": useCallback((data) => {
+      "pickup-cancelled": useCallback(() => {
         toast.info("A resident cancelled a pickup");
         loadPickups();
       }, [loadPickups]),
 
-      "pickup-completed": useCallback((data) => {
+      "pickup-completed": useCallback(() => {
         toast.success("Pickup completed!");
         loadPickups();
       }, [loadPickups]),
 
-      "pickup-assigned": useCallback((data) => {
+      "pickup-assigned": useCallback(() => {
         toast.success("You have a new assigned pickup!");
         loadPickups();
       }, [loadPickups]),
 
-      "arrival-confirmed": useCallback((data) => {
+      "arrival-confirmed": useCallback(() => {
         loadPickups();
       }, [loadPickups]),
 
-      "weight-saved": useCallback((data) => {
+      "weight-saved": useCallback(() => {
         loadPickups();
       }, [loadPickups]),
 
-      "pickup-expired": useCallback((data) => {
+      "pickup-expired": useCallback(() => {
         loadPickups();
       }, [loadPickups]),
     },

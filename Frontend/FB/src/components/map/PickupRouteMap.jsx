@@ -4,7 +4,7 @@ import L from "leaflet";
 import {
   FaRoute, FaClock, FaPlay, FaFlagCheckered,
   FaArrowUp, FaArrowRight, FaArrowLeft, FaChevronRight,
-  FaMapMarkerAlt, FaStop, FaCompass,
+  FaMapMarkerAlt, FaStop,
 } from "react-icons/fa";
 
 import { isValidCoordinates } from "../../utils/map";
@@ -136,6 +136,17 @@ const PickupRouteMap = ({ pickup, collectorLocation }) => {
 
   const hasPickup = isValidCoordinates(pickupCoords);
   const hasCollector = isValidCoordinates(collectorCoords);
+  const pickupLat = pickupCoords?.[1];
+  const pickupLng = pickupCoords?.[0];
+  const collectorLat = collectorCoords?.[1];
+  const collectorLng = collectorCoords?.[0];
+
+  const stopTracking = useCallback(() => {
+    if (watchIdRef.current !== null) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
+    }
+  }, []);
 
   const loadRoute = useCallback(async (from, to) => {
     setLoading(true);
@@ -177,18 +188,11 @@ const PickupRouteMap = ({ pickup, collectorLocation }) => {
 
   useEffect(() => {
     if (!hasPickup || !hasCollector) return;
-    const from = [collectorCoords[1], collectorCoords[0]];
-    const to = [pickupCoords[1], pickupCoords[0]];
+    const from = [collectorLat, collectorLng];
+    const to = [pickupLat, pickupLng];
     loadRoute(from, to);
     return () => { setNavigating(false); stopTracking(); };
-  }, [hasPickup, hasCollector, pickupCoords?.[0], pickupCoords?.[1], collectorCoords?.[0], collectorCoords?.[1]]);
-
-  const stopTracking = () => {
-    if (watchIdRef.current !== null) {
-      navigator.geolocation.clearWatch(watchIdRef.current);
-      watchIdRef.current = null;
-    }
-  };
+  }, [hasPickup, hasCollector, pickupLat, pickupLng, collectorLat, collectorLng, loadRoute, stopTracking]);
 
   const startNavigation = () => {
     if (!navigator.geolocation) {

@@ -1,13 +1,11 @@
-import { FaStar, FaUser } from "react-icons/fa";
+import { FaStar } from "react-icons/fa";
 
-import StarRating from "./StarRating";
 import RatingBreakdown from "./RatingBreakdown";
 
 const RatingSummaryCard = ({
   averageRating = 0,
   totalReviews = 0,
   ratingBreakdown = {},
-  userName,
 }) => {
   return (
     <div className="rounded-2xl border border-surface-100 bg-white p-5 shadow-sm dark:border-surface-200/60 dark:bg-surface-100">

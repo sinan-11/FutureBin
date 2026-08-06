@@ -3,6 +3,11 @@ export const API_BASE_URL =
   import.meta.env.VITE_API_URL ||
   "http://localhost:5000/api";
 
+// Refresh token persistence (browsers block cross-site cookies, so the
+// refresh token is also kept here and sent in the request body)
+export const REFRESH_TOKEN_STORAGE_KEY =
+  "futurebin_refreshToken";
+
 // User Roles
 export const ROLES = {
   RESIDENT: "resident",

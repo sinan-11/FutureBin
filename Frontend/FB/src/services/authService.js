@@ -13,6 +13,7 @@ import { clearProfile } from "../store/slices/userSlice";
 import { clearAdmin } from "../store/slices/adminSlice";
 
 import { getErrorMessage } from "../utils/helpers";
+import { REFRESH_TOKEN_STORAGE_KEY } from "../utils/constants";
 
 // Register
 export const registerService = async (data) => {
@@ -73,7 +74,11 @@ export const loginService = async (data) => {
   try {
     const response = await authApi.login(data);
 
-    const { user, accessToken } = response.data;
+    const { user, accessToken, refreshToken } = response.data;
+
+    if (refreshToken) {
+      localStorage.setItem(REFRESH_TOKEN_STORAGE_KEY, refreshToken);
+    }
 
     store.dispatch(
       setCredentials({
@@ -129,10 +134,14 @@ export const resetPasswordService = async (data) => {
 // Logout
 export const logoutService = async () => {
   try {
-    await authApi.logout();
+    await authApi.logout({
+      refreshToken:
+        localStorage.getItem(REFRESH_TOKEN_STORAGE_KEY) || undefined,
+    });
   } catch (error) {
     console.error(error);
   } finally {
+    localStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY);
     store.dispatch(logoutAction());
     store.dispatch(clearProfile());
     store.dispatch(clearAdmin());

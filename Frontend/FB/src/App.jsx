@@ -3,7 +3,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import axios from "axios";
 import { useSelector } from "react-redux";
 
-import { API_BASE_URL, API_ENDPOINTS, ROUTES } from "./utils/constants";
+import { API_BASE_URL, API_ENDPOINTS, ROUTES, REFRESH_TOKEN_STORAGE_KEY } from "./utils/constants";
 import axiosInstance from "./api/axiosInstance";
 import store from "./store/store";
 import { setCredentials, setAccessToken, logout } from "./store/slices/authSlice";
@@ -69,19 +69,31 @@ function App() {
 
     const initAuth = async () => {
       try {
+        const storedRefreshToken =
+          localStorage.getItem(REFRESH_TOKEN_STORAGE_KEY);
+
         const refreshRes = await axios.post(
           `${API_BASE_URL}${API_ENDPOINTS.REFRESH}`,
-          {},
+          storedRefreshToken ? { refreshToken: storedRefreshToken } : {},
           { withCredentials: true }
         );
+
         const newAccessToken = refreshRes.data.accessToken;
         if (!newAccessToken) throw new Error("No token");
+
+        if (refreshRes.data.refreshToken) {
+          localStorage.setItem(
+            REFRESH_TOKEN_STORAGE_KEY,
+            refreshRes.data.refreshToken
+          );
+        }
 
         store.dispatch(setAccessToken(newAccessToken));
 
         const meRes = await axiosInstance.get(API_ENDPOINTS.GET_ME);
         store.dispatch(setCredentials({ user: meRes.data.data, accessToken: newAccessToken }));
       } catch {
+        localStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY);
         store.dispatch(logout());
         store.dispatch(clearProfile());
         store.dispatch(clearAdmin());

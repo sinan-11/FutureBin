@@ -172,6 +172,7 @@ export const login = async (req, res) => {
       success: true,
       user: result.user,
       accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
     });
   } catch (error) {
     const status =
@@ -278,6 +279,7 @@ export const refresh = async (req, res) => {
     return res.status(200).json({
       success: true,
       accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
     });
   } catch (error) {
     return res.status(401).json({

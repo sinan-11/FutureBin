@@ -1,6 +1,6 @@
 import axios from "axios";
 import store from "../store/store";
-import { API_BASE_URL, API_ENDPOINTS } from "../utils/constants";
+import { API_BASE_URL, API_ENDPOINTS, REFRESH_TOKEN_STORAGE_KEY } from "../utils/constants";
 import {
   setAccessToken,
   logout,
@@ -31,15 +31,26 @@ let refreshPromise = null;
 
 const getRefreshedToken = () => {
   if (!refreshPromise) {
+    const storedRefreshToken =
+      localStorage.getItem(REFRESH_TOKEN_STORAGE_KEY);
+
     refreshPromise = axios
       .post(
         `${API_BASE_URL}${API_ENDPOINTS.REFRESH}`,
-        {},
+        storedRefreshToken ? { refreshToken: storedRefreshToken } : {},
         {
           withCredentials: true,
         }
       )
-      .then((response) => response.data.accessToken)
+      .then((response) => {
+        if (response.data.refreshToken) {
+          localStorage.setItem(
+            REFRESH_TOKEN_STORAGE_KEY,
+            response.data.refreshToken
+          );
+        }
+        return response.data.accessToken;
+      })
       .finally(() => {
         refreshPromise = null;
       });
@@ -74,6 +85,7 @@ axiosInstance.interceptors.response.use(
 
         return axiosInstance(originalRequest);
       } catch (err) {
+        localStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY);
         store.dispatch(logout());
 
         return Promise.reject(err);

@@ -2,25 +2,45 @@ name: FutureBin CI
 
 on:
   push:
-    branches:
-      - main
-      - master
+    branches: [main, master]
 
   pull_request:
-    branches:
-      - main
-      - master
+    branches: [main, master]
 
 jobs:
-  docker-build:
+  build:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
 
-      - name: Build Docker Compose
+      # ---------- Backend ----------
+
+      - name: Install Backend Dependencies
+        working-directory: Backend
+        run: npm ci
+
+      # ---------- Frontend ----------
+
+      - name: Install Frontend Dependencies
+        working-directory: Frontend/FB
+        run: npm ci
+
+      - name: Lint Frontend
+        working-directory: Frontend/FB
+        run: npm run lint
+
+      - name: Build Frontend
+        working-directory: Frontend/FB
+        run: npm run build
+
+      # ---------- Docker ----------
+
+      - name: Build Docker Images
         run: docker compose build

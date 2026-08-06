@@ -2,31 +2,52 @@ name: FutureBin CI
 
 on:
   push:
-    branches: [main, master]
+    branches:
+      - main
 
   pull_request:
-    branches: [main, master]
+    branches:
+      - main
+
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
+    name: Build & Validate
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            Backend/package-lock.json
+            Frontend/FB/package-lock.json
 
-      # ---------- Backend ----------
 
       - name: Install Backend Dependencies
         working-directory: Backend
         run: npm ci
 
-      # ---------- Frontend ----------
+      - name: Validate Backend Syntax
+        working-directory: Backend
+        run: |
+          find . -type f -name "*.js" \
+            -not -path "./node_modules/*" \
+            -exec node --check {} \;
+
 
       - name: Install Frontend Dependencies
         working-directory: Frontend/FB
@@ -40,7 +61,12 @@ jobs:
         working-directory: Frontend/FB
         run: npm run build
 
-      # ---------- Docker ----------
+ 
 
       - name: Build Docker Images
         run: docker compose build
+
+  
+
+      - name: CI Completed
+        run: echo "✅ FutureBin CI completed successfully!"

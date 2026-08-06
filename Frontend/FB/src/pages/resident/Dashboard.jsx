@@ -809,7 +809,7 @@ const Dashboard = () => {
                       <FaComments className="h-4 w-4" />
                       {chatOpen ? "Close Chat" : "Chat with Collector"}
                       {!chatOpen && activeRequest.unreadCount > 0 && (
-                        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-danger-50 dark:bg-danger-500/100 px-1.5 text-[11px] font-bold text-white">
+                        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-danger-500 px-1.5 text-[11px] font-bold text-white">
                           {activeRequest.unreadCount}
                         </span>
                       )}

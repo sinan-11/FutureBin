@@ -866,7 +866,7 @@ const Dashboard = () => {
                           <FaComments className="h-3 w-3" />
                           {chatOpen === req._id ? "Close Chat" : "Chat"}
                           {chatOpen !== req._id && req.unreadCount > 0 && (
-                            <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-danger-50 dark:bg-danger-500/100 px-1 text-[10px] font-bold text-white">
+                            <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-danger-500 px-1 text-[10px] font-bold text-white">
                               {req.unreadCount}
                             </span>
                           )}

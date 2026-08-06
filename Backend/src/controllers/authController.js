@@ -9,6 +9,25 @@ import {
   logoutUser,
 } from "../services/userService.js";
 
+const isProduction = () =>
+  process.env.NODE_ENV === "production";
+
+// Frontend (Vercel) and backend (AWS) are different sites, so the
+// refresh cookie must be SameSite=None and Secure to be sent on the
+// cross-site /auth/refresh request. Locally (localhost) Lax is enough.
+const getRefreshCookieOptions = () => ({
+  httpOnly: true,
+  secure: isProduction(),
+  sameSite: isProduction() ? "none" : "lax",
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+});
+
+const getClearCookieOptions = () => ({
+  httpOnly: true,
+  secure: isProduction(),
+  sameSite: isProduction() ? "none" : "lax",
+});
+
 // Register
 export const register = async (req, res) => {
   try {
@@ -143,12 +162,11 @@ export const login = async (req, res) => {
 
     const result = await loginUser(email, password);
 
-    res.cookie("refreshToken", result.refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
+    res.cookie(
+      "refreshToken",
+      result.refreshToken,
+      getRefreshCookieOptions()
+    );
 
     return res.status(200).json({
       success: true,
@@ -251,13 +269,11 @@ export const refresh = async (req, res) => {
     const result =
       await refreshAccessToken(incomingToken);
 
-    res.cookie("refreshToken", result.refreshToken, {
-      httpOnly: true,
-      secure:
-        process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
+    res.cookie(
+      "refreshToken",
+      result.refreshToken,
+      getRefreshCookieOptions()
+    );
 
     return res.status(200).json({
       success: true,
@@ -287,12 +303,10 @@ export const logout = async (req, res) => {
 
     await logoutUser(incomingToken);
 
-    res.clearCookie("refreshToken", {
-      httpOnly: true,
-      secure:
-        process.env.NODE_ENV === "production",
-      sameSite: "strict",
-    });
+    res.clearCookie(
+      "refreshToken",
+      getClearCookieOptions()
+    );
 
     return res.status(200).json({
       success: true,

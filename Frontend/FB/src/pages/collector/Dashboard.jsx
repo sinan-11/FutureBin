@@ -883,7 +883,7 @@ const Dashboard = () => {
                       )}
                     </div>
                     {chatOpen === req._id && (
-                      <ChatPanel pickup={req} socketRef={socketRef} onClose={() => setChatOpen(null)} />
+                      <ChatPanel pickup={req} socketRef={socketRef} isConnected={isConnected} onClose={() => setChatOpen(null)} />
                     )}
                     {mapOpen === `active-${req._id}` && req.location?.coordinates && (
                       <div className="mt-3">

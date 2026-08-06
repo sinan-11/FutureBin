@@ -831,7 +831,7 @@ const Dashboard = () => {
 
             {chatOpen && activeRequest.collector && (
               <div className="mt-3">
-                <ChatPanel pickup={activeRequest} socketRef={socketRef} onClose={() => setChatOpen(false)} />
+                <ChatPanel pickup={activeRequest} socketRef={socketRef} isConnected={isConnected} onClose={() => setChatOpen(false)} />
               </div>
             )}
           </section>

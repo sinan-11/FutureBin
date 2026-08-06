@@ -29,7 +29,7 @@ axiosInstance.interceptors.request.use(
 // with the same single-use (rotated) refresh token.
 let refreshPromise = null;
 
-const getRefreshedToken = () => {
+export const getRefreshedToken = () => {
   if (!refreshPromise) {
     const storedRefreshToken =
       localStorage.getItem(REFRESH_TOKEN_STORAGE_KEY);

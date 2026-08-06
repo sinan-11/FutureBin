@@ -28,7 +28,9 @@ const CHAT_ACTIVE_STATUSES = [
   "paid",
 ];
 
-const ChatPanel = ({ pickup, socketRef, onClose }) => {
+const CHAT_FALLBACK_POLL_INTERVAL = 4000;
+
+const ChatPanel = ({ pickup, socketRef, onClose, isConnected = false }) => {
   const { user } = useAuth();
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -81,23 +83,46 @@ const ChatPanel = ({ pickup, socketRef, onClose }) => {
     return () => container.removeEventListener("scroll", handleScroll);
   }, [checkIfNearBottom]);
 
-  const loadMessages = useCallback(async () => {
+  const loadMessages = useCallback(async (silent = false) => {
     if (!pickupId) return;
-    setLoading(true);
+    if (!silent) setLoading(true);
     setError(null);
     try {
       const data = await getChatMessagesService(pickupId);
-      setMessages(data);
+      setMessages((prev) => {
+        if (
+          prev.length === data.length &&
+          prev.every((m, i) => m._id === data[i]?._id)
+        ) {
+          return prev;
+        }
+        return data;
+      });
     } catch (err) {
-      setError(err.message || "Failed to load messages");
+      if (!silent) setError(err.message || "Failed to load messages");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [pickupId]);
 
   useEffect(() => {
     loadMessages();
   }, [loadMessages]);
+
+  useEffect(() => {
+    if (!isConnected) {
+      const interval = setInterval(() => {
+        loadMessages(true);
+      }, CHAT_FALLBACK_POLL_INTERVAL);
+      return () => clearInterval(interval);
+    }
+  }, [isConnected, loadMessages]);
+
+  useEffect(() => {
+    if (isConnected) {
+      loadMessages(true);
+    }
+  }, [isConnected, loadMessages]);
 
   useEffect(() => {
     if (!loading && messages.length > 0) {
@@ -177,7 +202,7 @@ const ChatPanel = ({ pickup, socketRef, onClose }) => {
       socket.off("chat-closed", handleChatClosed);
       socket.off("messages-read", handleMessagesRead);
     };
-  }, [socketRef, pickupId, user?._id]);
+  }, [socketRef, pickupId, user?._id, isConnected]);
 
   const handleSend = async () => {
     const text = input.trim();

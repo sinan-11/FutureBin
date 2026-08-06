@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
 import { API_BASE_URL } from "../utils/constants";
 import store from "../store/store";
+import { getRefreshedToken } from "../api/axiosInstance";
+import { setAccessToken } from "../store/slices/authSlice";
 
 const useSocket = ({ collectorEvents = {}, residentEvents = {}, onReconnect } = {}) => {
   const socketRef = useRef(null);
@@ -48,6 +50,34 @@ const useSocket = ({ collectorEvents = {}, residentEvents = {}, onReconnect } = 
           onReconnectRef.current();
         }
         hasReconnectedRef.current = false;
+      }
+    });
+
+    socket.io.on("reconnect_attempt", () => {
+      const currentToken = store.getState().auth.accessToken;
+      if (!currentToken) return;
+
+      socket.auth = { token: currentToken };
+
+      let expiresAt = null;
+      try {
+        const payload = JSON.parse(atob(currentToken.split(".")[1]));
+        if (payload.exp) {
+          expiresAt = payload.exp * 1000;
+        }
+      } catch {
+        // ignore malformed tokens
+      }
+
+      if (expiresAt && expiresAt - Date.now() < 2 * 60 * 1000) {
+        getRefreshedToken()
+          .then((freshToken) => {
+            if (freshToken) {
+              store.dispatch(setAccessToken(freshToken));
+              socket.auth = { token: freshToken };
+            }
+          })
+          .catch(() => {});
       }
     });
 

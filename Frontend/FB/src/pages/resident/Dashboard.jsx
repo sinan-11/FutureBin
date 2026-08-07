@@ -515,20 +515,26 @@ const Dashboard = () => {
         if (!msg || msg.receiverId !== user?._id) return;
 
         const pickupId = String(msg.pickupId);
-        const active = requestsRef.current?.current?.[0];
-        if (!active || String(active._id) !== pickupId) return;
         if (chatOpenRef.current) return;
 
-        setRequests((prev) => ({
-          ...prev,
-          current: prev.current.map((r) =>
-            String(r._id) === pickupId
-              ? { ...r, unreadCount: (r.unreadCount || 0) + 1 }
-              : r
-          ),
-        }));
+        const active = requestsRef.current?.current?.find(
+          (r) => String(r._id) === pickupId
+        );
 
-        const senderName = active.collector?.name || "Collector";
+        if (active) {
+          setRequests((prev) => ({
+            ...prev,
+            current: prev.current.map((r) =>
+              String(r._id) === pickupId
+                ? { ...r, unreadCount: (r.unreadCount || 0) + 1 }
+                : r
+            ),
+          }));
+        } else {
+          loadRequests();
+        }
+
+        const senderName = active?.collector?.name || "Collector";
         toast.info(
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100">
@@ -550,7 +556,7 @@ const Dashboard = () => {
           } }
         );
         playNotificationSound();
-      }, [user?._id]),
+      }, [user?._id, loadRequests]),
     },
     onReconnect: useCallback(() => {
       loadRequests();

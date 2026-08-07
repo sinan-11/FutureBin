@@ -207,8 +207,12 @@ const Dashboard = () => {
         const active = activePickupsRef.current.find(
           (p) => String(p._id) === pickupId
         );
-        if (!active) return;
         if (chatOpenRef.current === pickupId) return;
+
+        if (!active) {
+          loadData();
+          return;
+        }
 
         setActivePickups((prev) =>
           prev.map((p) =>
@@ -239,7 +243,7 @@ const Dashboard = () => {
           } }
         );
         playNotificationSound();
-      }, [user?._id]),
+      }, [user?._id, loadData]),
     },
     onReconnect: useCallback(() => {
       loadData();

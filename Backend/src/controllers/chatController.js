@@ -3,6 +3,8 @@ import {
   getMessages,
   markAsRead,
 } from "../services/chatService.js";
+import PickupRequest from "../models/PickupRequest.js";
+import { notifyPickupParticipants } from "../config/socket.js";
 
 
 
@@ -49,6 +51,19 @@ export const sendChatMessage = async (req, res) => {
       receiverId,
       message.trim()
     );
+
+    const pickup = await PickupRequest.findById(
+      req.params.pickupId
+    ).select("resident collector");
+
+    if (pickup?.resident && pickup?.collector) {
+      notifyPickupParticipants(
+        String(pickup.resident),
+        String(pickup.collector),
+        "chat-message",
+        { message: chatMessage }
+      );
+    }
 
     res.status(201).json({
       success: true,

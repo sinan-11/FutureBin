@@ -90,13 +90,32 @@ const ChatPanel = ({ pickup, socketRef, onClose, isConnected = false }) => {
     try {
       const data = await getChatMessagesService(pickupId);
       setMessages((prev) => {
+        const serverIds = new Set(data.map((m) => m._id));
+        const pendingOptimistic = prev.filter(
+          (m) =>
+            m._optimistic &&
+            !serverIds.has(m._id) &&
+            !data.some(
+              (d) => d.senderId === m.senderId && d.message === m.message
+            )
+        );
+        const merged = [...data, ...pendingOptimistic];
+
         if (
-          prev.length === data.length &&
-          prev.every((m, i) => m._id === data[i]?._id)
+          merged.length === prev.length &&
+          merged.every((m, i) => {
+            const p = prev[i];
+            return (
+              p &&
+              p._id === m._id &&
+              p.read === m.read &&
+              p.message === m.message
+            );
+          })
         ) {
           return prev;
         }
-        return data;
+        return merged;
       });
     } catch (err) {
       if (!silent) setError(err.message || "Failed to load messages");
@@ -110,11 +129,12 @@ const ChatPanel = ({ pickup, socketRef, onClose, isConnected = false }) => {
   }, [loadMessages]);
 
   useEffect(() => {
+    if (isConnected) return;
     const interval = setInterval(() => {
       loadMessages(true);
     }, CHAT_FALLBACK_POLL_INTERVAL);
     return () => clearInterval(interval);
-  }, [loadMessages]);
+  }, [isConnected, loadMessages]);
 
   useEffect(() => {
     if (isConnected) {
@@ -154,8 +174,17 @@ const ChatPanel = ({ pickup, socketRef, onClose, isConnected = false }) => {
     const handleNewMessage = (data) => {
       if (data?.message?.pickupId === pickupId) {
         setMessages((prev) => {
-          if (prev.some((m) => m._id === data.message._id)) return prev;
-          return [...prev, data.message];
+          const next = prev.filter(
+            (m) =>
+              !(
+                m._optimistic &&
+                data.message.senderId &&
+                m.senderId === data.message.senderId &&
+                m.message === data.message.message
+              )
+          );
+          if (next.some((m) => m._id === data.message._id)) return next;
+          return [...next, data.message];
         });
 
         if (data.message.receiverId === user?._id && pickupId) {
@@ -212,6 +241,20 @@ const ChatPanel = ({ pickup, socketRef, onClose, isConnected = false }) => {
     const socket = socketRef?.current;
 
     if (socket?.connected) {
+      const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      setMessages((prev) => [
+        ...prev,
+        {
+          _id: tempId,
+          pickupId,
+          senderId: user?._id,
+          receiverId,
+          message: text,
+          read: false,
+          createdAt: new Date().toISOString(),
+          _optimistic: true,
+        },
+      ]);
       socket.emit("chat-message", {
         pickupId,
         message: text,

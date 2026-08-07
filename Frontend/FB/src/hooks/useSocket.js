@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
+import { useSelector } from "react-redux";
 import { io } from "socket.io-client";
 import { API_BASE_URL } from "../utils/constants";
 import store from "../store/store";
 import { getRefreshedToken } from "../api/axiosInstance";
-import { setAccessToken } from "../store/slices/authSlice";
+import { setAccessToken, selectIsAuthenticated } from "../store/slices/authSlice";
 
 const SOCKET_URL = API_BASE_URL.replace(/\/api\/?$/, "");
 
@@ -27,6 +28,9 @@ const useSocket = ({ collectorEvents = {}, residentEvents = {}, onReconnect } = 
   const socketRef = useRef(null);
   const [isConnected, setIsConnected] = useState(false);
 
+  const isAuthenticated = useSelector(selectIsAuthenticated);
+  const userRole = useSelector((state) => state.auth.user?.role);
+
   const collectorEventsRef = useRef(collectorEvents);
   const residentEventsRef = useRef(residentEvents);
   const onReconnectRef = useRef(onReconnect);
@@ -46,10 +50,7 @@ const useSocket = ({ collectorEvents = {}, residentEvents = {}, onReconnect } = 
   }, [onReconnect]);
 
   useEffect(() => {
-    const token = store.getState().auth.accessToken;
-    const userRole = store.getState().auth.user?.role;
-
-    if (!token || !userRole) return;
+    if (!isAuthenticated || !userRole) return;
 
     const ensureFreshToken = () => {
       const current = store.getState().auth.accessToken;
@@ -74,7 +75,9 @@ const useSocket = ({ collectorEvents = {}, residentEvents = {}, onReconnect } = 
     };
 
     const socket = io(SOCKET_URL, {
-      auth: { token },
+      // Auth callback is invoked on every connection/reconnection attempt, so
+      // the latest (possibly rotated) access token is always used.
+      auth: (cb) => cb({ token: store.getState().auth.accessToken }),
       withCredentials: true,
       transports: ["polling", "websocket"],
       reconnection: true,
@@ -101,11 +104,7 @@ const useSocket = ({ collectorEvents = {}, residentEvents = {}, onReconnect } = 
     });
 
     const applyFreshToken = () => {
-      ensureFreshToken().then((freshToken) => {
-        if (freshToken) {
-          socket.auth = { token: freshToken };
-        }
-      });
+      ensureFreshToken();
     };
 
     socket.on("connect_error", (err) => {
@@ -141,7 +140,7 @@ const useSocket = ({ collectorEvents = {}, residentEvents = {}, onReconnect } = 
       socket.disconnect();
       socketRef.current = null;
     };
-  }, []);
+  }, [isAuthenticated, userRole]);
 
   return { socketRef, isConnected };
 };

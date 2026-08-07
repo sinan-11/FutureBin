@@ -33,26 +33,59 @@ connectDB().then(() => seedSettings());
 const app = express();
 const server = http.createServer(app);
 
-// Initialize Socket.IO
+
 initSocket(server);
 
-// Middleware
+
+
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://future-bin-seven.vercel.app",
+];
+
+if (process.env.CLIENT_URL) {
+  process.env.CLIENT_URL.split(",").forEach((origin) => {
+    const trimmed = origin.trim();
+    if (trimmed && !allowedOrigins.includes(trimmed)) {
+      allowedOrigins.push(trimmed);
+    }
+  });
+}
+
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || "https://future-bin-seven.vercel.app",
+    origin(origin, callback) {
+      // Allow requests with no origin (Postman, curl, mobile apps)
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      console.log("Blocked CORS Origin:", origin);
+
+      return callback(new Error("Not allowed by CORS"));
+    },
     credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
+
 
 app.use(express.json({ limit: "10mb" }));
 app.use(cookieParser());
 
-// Home Route
+
+
 app.get("/", (req, res) => {
   res.send("Future Bin API Running");
 });
 
-// API Routes
+
+
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/pickup-requests", pickupRoutes);
@@ -65,7 +98,8 @@ app.use("/api/ai", aiRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/admin/reviews", adminReviewRoutes);
 
-// 404 Handler
+
+
 app.use((req, res) => {
   res.status(404).json({
     success: false,
@@ -73,7 +107,8 @@ app.use((req, res) => {
   });
 });
 
-// Global Error Handler
+
+
 app.use((err, req, res, next) => {
   console.error(err);
 
@@ -83,7 +118,10 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Stale Pickup Request Expiration
+/* ==========================
+   STALE REQUEST CRON
+========================== */
+
 const EXPIRY_INTERVAL = 60 * 1000;
 
 setInterval(async () => {
@@ -124,12 +162,15 @@ setInterval(async () => {
   }
 }, EXPIRY_INTERVAL);
 
-// Subscription Cron
+
+
 startSubscriptionCron();
 
-// Start Server
+
+
 const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, () => {
   console.log(`Server Running on Port ${PORT}`);
+  console.log("Allowed Origins:", allowedOrigins);
 });

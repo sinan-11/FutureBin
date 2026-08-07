@@ -8,10 +8,24 @@ let io = null;
 const collectorSockets = new Map();
 const residentSockets = new Map();
 
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://future-bin-seven.vercel.app",
+];
+
+if (process.env.CLIENT_URL) {
+  process.env.CLIENT_URL.split(",").forEach((origin) => {
+    const trimmed = origin.trim();
+    if (trimmed && !allowedOrigins.includes(trimmed)) {
+      allowedOrigins.push(trimmed);
+    }
+  });
+}
+
 export const initSocket = (server) => {
   io = new Server(server, {
     cors: {
-      origin: process.env.CLIENT_URL || "http://localhost:5173",
+      origin: allowedOrigins,
       credentials: true,
     },
     reconnection: true,

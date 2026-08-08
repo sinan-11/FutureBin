@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import {
   FaLeaf,
@@ -7,10 +7,8 @@ import {
   FaSun,
   FaMoon,
   FaSignOutAlt,
-  FaBell,
   FaChevronLeft,
   FaRobot,
-  FaBellSlash,
 } from "react-icons/fa";
 import { toast } from "react-toastify";
 
@@ -42,23 +40,10 @@ const AppShell = ({
   const [dark, setDark] = useState(
     () => document.documentElement.classList.contains("dark")
   );
-  const [notifOpen, setNotifOpen] = useState(false);
-  const notifRef = useRef(null);
-
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);
     localStorage.setItem("theme", dark ? "dark" : "light");
   }, [dark]);
-
-  useEffect(() => {
-    const onClick = (e) => {
-      if (notifRef.current && !notifRef.current.contains(e.target)) {
-        setNotifOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", onClick);
-    return () => document.removeEventListener("mousedown", onClick);
-  }, []);
 
   useEffect(() => {
     setMobileOpen(false);
@@ -279,42 +264,6 @@ const AppShell = ({
 
             <div className="flex items-center gap-1.5 sm:gap-2">
               {topbarActions}
-
-              {/* Notifications */}
-              <div className="relative" ref={notifRef}>
-                <button
-                  onClick={() => setNotifOpen((prev) => !prev)}
-                  className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-surface-200 text-surface-500 transition hover:bg-surface-100 dark:border-surface-200 dark:text-surface-400 dark:hover:bg-surface-200"
-                  aria-label="Notifications"
-                >
-                  <FaBell className="h-4 w-4" />
-                  <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                </button>
-
-                {notifOpen && (
-                  <div className="animate-pop absolute right-0 top-12 w-72 overflow-hidden rounded-2xl border border-surface-200 bg-surface shadow-popover dark:border-surface-200 dark:bg-surface-100">
-                    <div className="flex items-center justify-between border-b border-surface-100 px-4 py-3 dark:border-surface-200/60">
-                      <p className="text-sm font-semibold text-surface-800 dark:text-surface-800">
-                        Notifications
-                      </p>
-                      <span className="rounded-full bg-surface-100 px-2 py-0.5 text-[10px] font-semibold text-surface-500 dark:bg-surface-200 dark:text-surface-500">
-                        0 new
-                      </span>
-                    </div>
-                    <div className="flex flex-col items-center gap-2 px-4 py-8 text-center">
-                      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-surface-100 text-surface-400 dark:bg-surface-200 dark:text-surface-500">
-                        <FaBellSlash className="h-5 w-5" />
-                      </div>
-                      <p className="text-sm font-medium text-surface-500 dark:text-surface-400">
-                        You're all caught up
-                      </p>
-                      <p className="text-xs text-surface-400 dark:text-surface-500">
-                        Pickup updates will appear here.
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
 
               {/* Theme toggle */}
               <button

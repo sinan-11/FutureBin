@@ -133,16 +133,16 @@ export const TOOL_DEFINITIONS = [
 // ─── Tool Role Permissions ───────────────────────────────────────────────────
 
 const TOOL_ROLES = {
-  get_wallet_balance: ["resident", "collector", "admin"],
-  get_wallet_transactions: ["resident", "collector", "admin"],
+  get_wallet_balance: ["resident", "collector"],
+  get_wallet_transactions: ["resident", "collector"],
   get_active_pickup: ["resident", "collector"],
   track_pickup: ["resident", "collector"],
   get_subscription: ["resident"],
-  get_payment_history: ["resident", "collector", "admin"],
+  get_payment_history: ["resident", "collector"],
   get_collector_details: ["resident"],
-  get_user_profile: ["resident", "collector", "admin"],
+  get_user_profile: ["resident", "collector"],
   get_pending_withdrawal: ["collector"],
-  get_pricing: ["resident", "collector", "admin"],
+  get_pricing: ["resident", "collector"],
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
